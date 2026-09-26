@@ -45,7 +45,32 @@ export interface EscalaPoder {
   dadosAtaquePorNivel?: number;
   /** Golpe de mesmo `id`: dados extras de dano por nível, somados a `dadosDanoExtras`. */
   dadosDanoPorNivel?: number;
+  /**
+   * Efeitos escaláveis genéricos (alcance, absorção, criaturas protegidas etc.). Os campos acima são os efeitos de
+   * ids reservados (`ataque_*`, `defesa_*`, `dano`, `atributo_*`, `pv_extra`, `usos`, `fieis`, `dados_ataque`,
+   * `dados_dano`): são a única fonte desses valores, e o motor os expõe junto com `efeitos` pela mesma função.
+   */
+  efeitos?: EfeitoEscalavel[];
+  /** Marcos por nível do poder (ex.: nível 3 passa a reduzir Tsu real); a interface mostra os atingidos e o próximo. */
+  patamares?: PatamarPoder[];
 }
+
+/** Efeito numérico de um poder: valor = fixo + porPonto × ⌊nível ÷ (aCada ?? 1)⌋. Sem nível ou removido, vale zero. */
+export interface EfeitoEscalavel {
+  /** Identificador usado nos marcadores de texto (`{poder.<id>.<efeito>}`); sem pontos nem chaves. */
+  id: string;
+  rotulo: string;
+  porPonto: number;
+  /** Parte fixa somada ao valor (ex.: absorção de 200 que não cresce; ou o ajuste do mestre). */
+  fixo?: number;
+  /** Unidade exibida depois do valor (ex.: "km²", "criaturas"). */
+  unidade?: string;
+  /** O efeito cresce a cada N níveis (ex.: vigor +1 a cada 2 níveis). */
+  aCada?: number;
+}
+
+/** Marco do poder: a partir do `nivel`, vale o `texto` (aceita marcadores de texto vivo). */
+export interface PatamarPoder { nivel: number; texto: string }
 
 export interface Poder {
   id: string;
@@ -59,6 +84,8 @@ export interface Poder {
   mostrarNaBatalha?: boolean;
   /** Escala numérica por nível; ausente, o poder não gera parcelas derivadas. */
   escala?: EscalaPoder;
+  /** Aspecto do mundo (pilar) mínimo para o poder funcionar (ex.: honra 3); acima do pilar atual, a ficha alerta. */
+  requerPilar?: number;
 }
 
 export type Elemento = 'fogo' | 'agua' | 'ar' | 'terra' | 'luz' | 'trevas';
@@ -100,10 +127,10 @@ export interface GolpeEspecial {
   pressaoPorPonto?: number;
 }
 
-/** Ação livre exibida na aba Batalha (ex.: Terra Real: "1d×48 direto no PV"). */
+/** Ação livre exibida na aba Batalha (ex.: Terra Real: "1d×48 direto no PV"); os textos aceitam marcadores vivos. */
 export interface AcaoBatalha { id: string; nome: string; rolagem: string; notas: string }
 
-/** Guia "Quando for atacado": situação e a resposta recomendada. */
+/** Guia "Quando for atacado": situação e a resposta recomendada (aceita marcadores vivos, como `{poder.<id>.<efeito>}`). */
 export interface Reacao { situacao: string; resposta: string }
 
 export interface Regras {
@@ -124,6 +151,8 @@ export interface Ficha {
     raca: string;
     reino: string;
     pilarLuganico: string;
+    /** Nível do aspecto do mundo do pilar lugânico (1 a 5); exibido como "Justiça 3". */
+    pilarNivel: number;
     nivel: number;
     nivelLuganico: number;
     basePv: number;

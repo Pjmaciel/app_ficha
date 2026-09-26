@@ -2,8 +2,8 @@
 // Regra de ouro: digitar em um campo só recalcula os textos derivados (funções registradas com
 // `ligar`); os campos nunca são recriados durante a digitação, então o foco não se perde.
 import {
-  alertaBonusNivel, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
-  usoDoPoder, usosPorDiaDoPoder,
+  alertaBonusNivel, alertasPilar, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
+  pilarTexto, usoDoPoder, usosPorDiaDoPoder,
 } from '../engine';
 import type { Ficha } from '../model/types';
 import { abaAtributos } from './abas/atributos';
@@ -89,7 +89,7 @@ export function iniciar(raiz: HTMLElement): void {
       h('div', { class: 'visao', role: 'group', 'aria-label': 'Visão rápida' },
         tile('Nível', () => String(ficha.identidade.nivel)),
         tile('Lugânico', () => String(ficha.identidade.nivelLuganico)),
-        tile('Pilar', () => ficha.identidade.pilarLuganico || '—'),
+        tile('Pilar', () => pilarTexto(ficha)),
         tile('PV', () => `${sessao.pvAtual} / ${pvTotal(ficha)}`),
         tile('Rolagem', () => `${dadosPorNivel(ficha.identidade.nivel)}d×100`),
         tile('Arma principal', () => ficha.identidade.armaPrincipal || '—'),
@@ -134,6 +134,10 @@ export function iniciar(raiz: HTMLElement): void {
             avisar(`Bônus de nível corrigido para ${esperado} em todos os atributos.`);
           },
         }, `Corrigir para ${esperado}`)));
+    }
+    for (const a of alertasPilar(ficha)) {
+      alertas.append(h('div', { class: 'alerta-caixa', role: 'alert' },
+        h('p', {}, `${a.nome} exige o aspecto do mundo ${ficha.identidade.pilarLuganico || 'do pilar'} ${a.requer}, e o pilar atual está em ${a.atual}: o poder só funciona quando o aspecto chegar a ${a.requer}.`)));
     }
     const d = diferencaAtributos(ficha);
     if (d.excedeu) {

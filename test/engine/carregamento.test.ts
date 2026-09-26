@@ -6,8 +6,8 @@ import type { Ficha } from '../../src/model/types';
 const embutida = dados as unknown as Ficha;
 
 describe('decidirCarregamento', () => {
-  it('a ficha embutida está na revisão 3', () => {
-    expect(embutida.revisaoDados).toBe(3);
+  it('a ficha embutida está na revisão 4', () => {
+    expect(embutida.revisaoDados).toBe(4);
   });
 
   it('sem ficha salva usa a embutida', () => {
@@ -26,9 +26,13 @@ describe('decidirCarregamento', () => {
     expect(decidirCarregamento({ versao: 2 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
   });
 
+  it('a revisão 3 (antes do nível 2 da Proteção Divina e do pilar) pede o aviso', () => {
+    expect(decidirCarregamento({ versao: 2, revisaoDados: 3 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
+  });
+
   it('versão 2 com a mesma revisão (ou maior) é mantida sem aviso', () => {
-    expect(decidirCarregamento({ versao: 2, revisaoDados: 3 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
     expect(decidirCarregamento({ versao: 2, revisaoDados: 4 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: 5 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
   });
 });
 

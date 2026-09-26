@@ -1,6 +1,6 @@
 {
   "versao": 2,
-  "revisaoDados": 3,
+  "revisaoDados": 4,
   "identidade": {
     "nome": "Alexsander Somar III",
     "jogador": "Pablo Maciel",
@@ -10,7 +10,8 @@
     "nivel": 41,
     "nivelLuganico": 3,
     "basePv": 12,
-    "armaPrincipal": "Jikar"
+    "armaPrincipal": "Jikar",
+    "pilarNivel": 3
   },
   "regras": {
     "pontosIniciais": 1018,
@@ -726,7 +727,41 @@
       "nome": "Velocidade Divina",
       "nivel": 2,
       "tipo": "passivo",
-      "descricao": "Dá uma ação de velocidade contra outro Lugan. Contra seres não lugânicos, dá três ações extras."
+      "descricao": "Dá uma ação de velocidade contra outro Lugan. Contra seres não lugânicos, dá três ações extras.",
+      "escala": {
+        "efeitos": [
+          {
+            "id": "acoes_velocidade",
+            "rotulo": "Ações de velocidade contra outros Lugans",
+            "porPonto": 1
+          },
+          {
+            "id": "acoes_extras",
+            "rotulo": "Ações extras contra não lugânicos",
+            "porPonto": 0,
+            "fixo": 3,
+            "unidade": "ações"
+          },
+          {
+            "id": "velocidade_kmh",
+            "rotulo": "Velocidade de deslocamento",
+            "porPonto": 220,
+            "unidade": "km/h"
+          },
+          {
+            "id": "teleporte_km",
+            "rotulo": "Distância do teleporte",
+            "porPonto": 2000,
+            "unidade": "km"
+          }
+        ],
+        "patamares": [
+          {
+            "nivel": 4,
+            "texto": "rompe a barreira do espaço: teleporte para qualquer lugar de Kitai, até {poder.velocidade_divina.teleporte_km.porPonto} km por ponto"
+          }
+        ]
+      }
     },
     {
       "id": "lugan_da_batalha",
@@ -744,7 +779,15 @@
           "bloquear": 50,
           "aparar": 50
         },
-        "danoPorNivel": 20
+        "danoPorNivel": 20,
+        "efeitos": [
+          {
+            "id": "pressao_km2",
+            "rotulo": "Pressão dos ataques",
+            "porPonto": 1,
+            "unidade": "km²"
+          }
+        ]
       }
     },
     {
@@ -756,7 +799,29 @@
       "escala": {
         "usosPorNivel": 1,
         "dadosAtaquePorNivel": 1,
-        "dadosDanoPorNivel": 1
+        "dadosDanoPorNivel": 1,
+        "efeitos": [
+          {
+            "id": "pressao_km2",
+            "rotulo": "Pressão dos ataques",
+            "porPonto": 8,
+            "unidade": "km²"
+          },
+          {
+            "id": "raio_m",
+            "rotulo": "Raio do ataque especial contra divinos",
+            "porPonto": 0,
+            "fixo": 500,
+            "unidade": "m"
+          },
+          {
+            "id": "custo_pv",
+            "rotulo": "Custo em PV sem pontos no poder",
+            "porPonto": 0,
+            "fixo": 1600,
+            "unidade": "PV"
+          }
+        ]
       }
     },
     {
@@ -777,7 +842,15 @@
           "ataqueArmaBranca": 70,
           "aparar": 70
         },
-        "danoPorNivel": 20
+        "danoPorNivel": 20,
+        "efeitos": [
+          {
+            "id": "pressao_km2",
+            "rotulo": "Pressão dos ataques",
+            "porPonto": 2,
+            "unidade": "km²"
+          }
+        ]
       }
     },
     {
@@ -790,18 +863,78 @@
         "atributoPorNivel": {
           "atributo": "forca",
           "valor": 60
-        }
+        },
+        "efeitos": [
+          {
+            "id": "raio_km2",
+            "rotulo": "Raio dos ataques de Força",
+            "porPonto": 2,
+            "unidade": "km²"
+          }
+        ]
       }
     },
     {
       "id": "protecao_divina",
       "nome": "Proteção Divina",
-      "nivel": 1,
+      "nivel": 2,
       "tipo": "defensivo",
       "descricao": "1 rodada por dia de imunidade total a dano, divino ou não; +500 PV extras; proteção de área em 5 km²; absorve 200 de dano no cenário e em todos os envolvidos naquele ataque; pode escolher até 100 criaturas por dia para proteger; essas criaturas recebem 2 barras de CD e +15 em ataque, defesa e perícias; bônus de +150 para anular efeitos mentais divinos.",
       "escala": {
         "pvPorNivel": 500,
-        "usosPorNivel": 1
+        "usosPorNivel": 1,
+        "efeitos": [
+          {
+            "id": "imunidade_rodadas",
+            "rotulo": "Imunidade total",
+            "porPonto": 1,
+            "unidade": "rodadas por dia"
+          },
+          {
+            "id": "vigor",
+            "rotulo": "Rolagem de vigor lugânico",
+            "porPonto": 1,
+            "aCada": 2
+          },
+          {
+            "id": "absorcao_area",
+            "rotulo": "Absorção de dano no cenário e nos envolvidos",
+            "porPonto": 0,
+            "fixo": 200,
+            "unidade": "de dano"
+          },
+          {
+            "id": "raio_km2",
+            "rotulo": "Raio da proteção",
+            "porPonto": 5,
+            "unidade": "km²"
+          },
+          {
+            "id": "criaturas",
+            "rotulo": "Criaturas protegidas",
+            "porPonto": 100,
+            "unidade": "criaturas"
+          },
+          {
+            "id": "anti_mental",
+            "rotulo": "Anula efeitos mentais divinos",
+            "porPonto": 150
+          }
+        ],
+        "patamares": [
+          {
+            "nivel": 3,
+            "texto": "passa a reduzir a Tsu real: rola 1d para diminuir o dano"
+          },
+          {
+            "nivel": 6,
+            "texto": "reduz a Tsu real com 1d+1"
+          },
+          {
+            "nivel": 9,
+            "texto": "reduz a Tsu real com 1d+2"
+          }
+        ]
       }
     },
     {
@@ -812,7 +945,26 @@
       "usosPorDia": 1,
       "descricao": "protege Hagashi contra dano em área de 100 km do reino; reduz 350 de dano por ponto, então 1.400 de proteção territorial; vincula 32.000 hagashianos fiéis; esses fiéis recebem proteção contra dano em área; fiéis ganham +48 em ataque e defesa quando Alexander desejar; esse bônus dura 8 horas e pode ser usado 1 vez a cada 24h; Alexander ganha +1 em ataque e defesa para cada 200 fiéis hagashianos; o dano dele aumenta +1 para cada 400 fiéis; a morte desses fiéis diminui esse poder.",
       "escala": {
-        "fieisPorNivel": 8000
+        "fieisPorNivel": 8000,
+        "efeitos": [
+          {
+            "id": "protecao",
+            "rotulo": "Proteção territorial",
+            "porPonto": 350,
+            "unidade": "de dano"
+          },
+          {
+            "id": "area_km",
+            "rotulo": "Área protegida do reino",
+            "porPonto": 25,
+            "unidade": "km"
+          },
+          {
+            "id": "bonus_fieis",
+            "rotulo": "Bônus dos fiéis em ataque e defesa",
+            "porPonto": 12
+          }
+        ]
       }
     },
     {
@@ -832,7 +984,42 @@
           "bloquear": 30,
           "aparar": 30
         },
-        "danoPorNivel": 10
+        "danoPorNivel": 10,
+        "efeitos": [
+          {
+            "id": "anti_mental",
+            "rotulo": "Anula efeitos mentais divinos",
+            "porPonto": 100,
+            "fixo": 100
+          },
+          {
+            "id": "acao_extra",
+            "rotulo": "Ações extras",
+            "porPonto": 1,
+            "aCada": 3,
+            "unidade": "ações"
+          },
+          {
+            "id": "voo_kmh",
+            "rotulo": "Voo",
+            "porPonto": 140,
+            "fixo": 140,
+            "unidade": "km/h"
+          },
+          {
+            "id": "voo_altura_m",
+            "rotulo": "Altura máxima do voo",
+            "porPonto": 0,
+            "fixo": 3000,
+            "unidade": "m"
+          },
+          {
+            "id": "pressao_m",
+            "rotulo": "Pressão dos ataques",
+            "porPonto": 500,
+            "unidade": "m"
+          }
+        ]
       }
     },
     {
@@ -844,7 +1031,29 @@
       "escala": {
         "ataquePorNivel": {
           "ataqueMagico": 70
-        }
+        },
+        "efeitos": [
+          {
+            "id": "dano_magico",
+            "rotulo": "Bônus nos danos mágicos",
+            "porPonto": 10
+          },
+          {
+            "id": "locais",
+            "rotulo": "Locais de Kitai para conjurar a mesma magia",
+            "porPonto": 3
+          },
+          {
+            "id": "alvos",
+            "rotulo": "Alvos simultâneos de magia",
+            "porPonto": 50
+          },
+          {
+            "id": "defesa_aliados",
+            "rotulo": "Bônus de defesa concedido a Lugans aliados",
+            "porPonto": 30
+          }
+        ]
       }
     },
     {
@@ -852,7 +1061,29 @@
       "nome": "Fogo Real",
       "nivel": 2,
       "tipo": "ativo",
-      "descricao": "Manipula fogo real em 2 km². Causa 400 dano/rodada. Contra divinos: ataques diretos recebem +200 dano. Alvos de água sofrem ×1,5 dano. Não divinos são incinerados ou testam Esquiva para sofrer 1/4."
+      "descricao": "Manipula fogo real em 2 km². Causa 400 dano/rodada. Contra divinos: ataques diretos recebem +200 dano. Alvos de água sofrem ×1,5 dano. Não divinos são incinerados ou testam Esquiva para sofrer 1/4.",
+      "escala": {
+        "efeitos": [
+          {
+            "id": "area_km2",
+            "rotulo": "Área das chamas",
+            "porPonto": 1,
+            "unidade": "km²"
+          },
+          {
+            "id": "dano_rodada",
+            "rotulo": "Dano por rodada em contato",
+            "porPonto": 0,
+            "fixo": 400
+          },
+          {
+            "id": "dano_divinos",
+            "rotulo": "Dano extra em ataques diretos contra divinos",
+            "porPonto": 50,
+            "fixo": 100
+          }
+        ]
+      }
     }
   ],
   "tsu": [
@@ -897,8 +1128,8 @@
     {
       "id": "fogo_real",
       "nome": "Fogo Real",
-      "rolagem": "400 de dano por rodada em 2 km²",
-      "notas": "Contra divinos, ataques diretos recebem +200 de dano."
+      "rolagem": "{poder.fogo_real.dano_rodada} de dano por rodada em {poder.fogo_real.area_km2} km²",
+      "notas": "Contra divinos, ataques diretos recebem +{poder.fogo_real.dano_divinos} de dano."
     }
   ],
   "lembretes": [
@@ -907,8 +1138,8 @@
     "Inimigos só fazem 1 ataque contra você.",
     "Contra um grupo, só metade pode atacar.",
     "Ilusão, mentira e invisibilidade não funcionam contra você.",
-    "Proteção Divina: 1 rodada por dia de imunidade.",
-    "Golpe Devastador: 3 pontos (usos por dia).",
+    "Proteção Divina: {poder.protecao_divina.imunidade_rodadas} rodada(s) por dia de imunidade.",
+    "Golpe Devastador: {poder.golpe_devastador.nivel} ponto(s) (usos por dia).",
     "Terra Real: 1d×48 direto no PV."
   ],
   "reacoes": [
@@ -918,11 +1149,11 @@
     },
     {
       "situacao": "Dano absurdo ou divino",
-      "resposta": "Proteção Divina: imune por 1 rodada por dia."
+      "resposta": "Proteção Divina: imune por {poder.protecao_divina.imunidade_rodadas} rodada(s) por dia."
     },
     {
       "situacao": "Efeito mental divino",
-      "resposta": "Somar o bônus de Lugan Completo (+200) e de Proteção Divina (+150)."
+      "resposta": "Somar o bônus de Lugan Completo (+{poder.lugan_completo.anti_mental}) e de Proteção Divina (+{poder.protecao_divina.anti_mental}), total +{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}."
     },
     {
       "situacao": "Ilusão, mentira ou invisibilidade",
@@ -930,7 +1161,7 @@
     },
     {
       "situacao": "Área contra aliados ou cenário",
-      "resposta": "Proteção Divina absorve 200 de dano; O Filho de Hagashi protege os fiéis."
+      "resposta": "Proteção Divina absorve {poder.protecao_divina.absorcao_area} de dano em {poder.protecao_divina.raio_km2} km²; O Filho de Hagashi protege os fiéis."
     }
   ],
   "fieis": 0,

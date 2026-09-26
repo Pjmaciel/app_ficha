@@ -171,6 +171,27 @@ button.grande { min-height: 3.25rem; font-size: 1.05rem; }
 .poder.removido { opacity: 0.55; filter: grayscale(1); }
 .poder.removido:focus-within { opacity: 1; }
 
+/* Efeitos escaláveis, patamares e textos vivos */
+.efeitos-poder { margin: 0.6rem 0; }
+.efeitos-poder h4 { margin: 0.4rem 0; }
+.lista-efeitos { list-style: none; margin: 0.3rem 0; padding: 0; display: grid; gap: 0.5rem; }
+.item-efeito { display: grid; gap: 0.3rem; padding: 0.5rem 0; border-top: 1px solid var(--borda); }
+.item-efeito:first-child { border-top: 0; }
+.item-efeito .remover { justify-self: start; }
+.valor-efeito { color: var(--destaque); }
+.previa { margin: 0.2rem 0; overflow-wrap: anywhere; }
+.previa-erro { color: var(--alerta); }
+.ajuda-marcadores { margin: 0.4rem 0 0.8rem; border: 1px solid var(--borda); border-radius: 0.5rem; padding: 0.4rem 0.75rem; }
+.ajuda-marcadores summary { cursor: pointer; font-weight: 600; min-height: 2.25rem; display: flex; align-items: center; }
+.lista-marcadores { list-style: none; margin: 0.3rem 0; padding: 0; display: grid; gap: 0.25rem; max-height: 18rem; overflow-y: auto; }
+.lista-marcadores code { overflow-wrap: anywhere; }
+.efeitos-protecao, .patamares { list-style: none; margin: 0.3rem 0; padding: 0; display: grid; gap: 0.2rem; }
+.efeitos-protecao li::before { content: '•'; color: var(--destaque); margin-right: 0.4rem; }
+.patamares .atingido { color: var(--destaque); font-weight: 600; }
+.proximo-patamar { margin: 0.3rem 0; color: var(--suave); font-style: italic; }
+.descricao-poder { margin: 0.3rem 0; }
+.descricao-poder summary { cursor: pointer; color: var(--suave); min-height: 2rem; display: flex; align-items: center; }
+
 /* Tabelas (atributos e perícias) */
 .tabela-rolavel { overflow-x: auto; }
 .tabela { width: 100%; border-collapse: collapse; }

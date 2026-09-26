@@ -87,7 +87,8 @@ describe('ficha do Alexsander', () => {
   it('traz as ações, os lembretes e as reações da aba Batalha', () => {
     expect(ficha.acoes.map((a) => [a.nome, a.rolagem])).toEqual([
       ['Terra Real', '1d×48 direto no PV'],
-      ['Fogo Real', '400 de dano por rodada em 2 km²'],
+      // O texto guarda marcadores vivos; o motor os resolve ao exibir (400 e 2 km² no nível 2).
+      ['Fogo Real', '{poder.fogo_real.dano_rodada} de dano por rodada em {poder.fogo_real.area_km2} km²'],
     ]);
     expect(new Set(ficha.acoes.map((a) => a.id)).size).toBe(ficha.acoes.length);
     expect(ficha.lembretes).toHaveLength(8);

@@ -39,6 +39,33 @@ function exigirFontes(v: unknown, caminho: string): void {
 
 const CAMPOS_ESCALA_NUMERICOS = ['danoPorNivel', 'pvPorNivel', 'usosPorNivel', 'fieisPorNivel', 'dadosAtaquePorNivel', 'dadosDanoPorNivel'];
 
+/** Valida os efeitos escaláveis: id, rótulo e porPonto obrigatórios; fixo, unidade e aCada opcionais (aCada positivo). */
+function exigirEfeitos(efeitos: unknown, id: string): void {
+  if (efeitos === undefined) return;
+  exigir(Array.isArray(efeitos), `poder ${id} com escala.efeitos inválido (deve ser uma lista).`);
+  const vistos = new Set<string>();
+  for (const e of efeitos) {
+    exigir(
+      ehObjeto(e) && typeof e.id === 'string' && e.id !== '' && !/[.{}\s]/.test(e.id) && typeof e.rotulo === 'string' && ehNumero(e.porPonto),
+      `poder ${id} com efeito inválido (id sem pontos, chaves ou espaços, rótulo em texto e porPonto numérico).`,
+    );
+    exigir(!vistos.has(e.id), `poder ${id} com efeito repetido (${e.id}).`);
+    vistos.add(e.id);
+    exigir(e.fixo === undefined || ehNumero(e.fixo), `poder ${id}, efeito ${e.id}: fixo não numérico.`);
+    exigir(e.unidade === undefined || typeof e.unidade === 'string', `poder ${id}, efeito ${e.id}: unidade deve ser texto.`);
+    exigir(e.aCada === undefined || (ehNumero(e.aCada) && (e.aCada as number) > 0), `poder ${id}, efeito ${e.id}: aCada deve ser um número positivo.`);
+  }
+}
+
+/** Valida os patamares: nível numérico e texto. */
+function exigirPatamares(patamares: unknown, id: string): void {
+  if (patamares === undefined) return;
+  exigir(Array.isArray(patamares), `poder ${id} com escala.patamares inválido (deve ser uma lista).`);
+  for (const x of patamares) {
+    exigir(ehObjeto(x) && ehNumero(x.nivel) && typeof x.texto === 'string', `poder ${id} com patamar inválido (nivel numérico e texto).`);
+  }
+}
+
 /** Valida a escala por nível de um poder (todos os campos são opcionais). */
 function exigirEscala(escala: unknown, id: string): void {
   exigir(ehObjeto(escala), `poder ${id} com escala inválida (deve ser um objeto).`);
@@ -52,6 +79,8 @@ function exigirEscala(escala: unknown, id: string): void {
       `poder ${id} com escala.ataquePorNivel inválido (chaves de combate com valores numéricos).`,
     );
   }
+  exigirEfeitos(escala.efeitos, id);
+  exigirPatamares(escala.patamares, id);
   const atributo = escala.atributoPorNivel;
   if (atributo !== undefined) {
     exigir(
@@ -99,6 +128,7 @@ function exigirIdentidade(identidade: unknown, textos: string[]): asserts identi
   for (const campo of ['nivel', 'nivelLuganico', 'basePv']) {
     exigir(ehNumero(identidade[campo]), `identidade.${campo} deve ser numérico.`);
   }
+  exigir(identidade.pilarNivel === undefined || ehNumero(identidade.pilarNivel), 'identidade.pilarNivel deve ser numérico.');
 }
 
 /** Valida a estrutura mínima da versão 1, lida apenas pela migração. */
@@ -220,6 +250,7 @@ function validarV2(dados: Objeto): void {
       exigir(p[campo] === undefined || ehNumero(p[campo]), `poder ${p.id} com ${campo} não numérico.`);
     }
     exigir(p.mostrarNaBatalha === undefined || typeof p.mostrarNaBatalha === 'boolean', `poder ${p.id} com mostrarNaBatalha inválido.`);
+    exigir(p.requerPilar === undefined || ehNumero(p.requerPilar), `poder ${p.id} com requerPilar não numérico.`);
     if (p.escala !== undefined) exigirEscala(p.escala, p.id);
   }
 

@@ -1,5 +1,5 @@
 // Rótulos, formatação e componentes reutilizados pelas abas.
-import { comSinal, ehDerivada } from '../engine';
+import { comSinal, ehDerivada, marcadoresInvalidos, resolverTexto } from '../engine';
 import type { AtributoId, ChaveCombate, Elemento, Fonte, FonteDerivada, GrupoPericia, TipoPoder } from '../model/types';
 import type { Contexto } from './contexto';
 import { campo, definirTexto, entradaNumero, entradaTexto, h, limpar } from './dom';
@@ -36,6 +36,23 @@ export const ROTULO_TIPO_PODER: Record<TipoPoder, string> = {
 };
 
 export { comSinal, ehDerivada, formatarRolagem as rolagem } from '../engine';
+
+/**
+ * Prévia de um texto vivo: mostra o texto com os marcadores (`{poder.<id>.<efeito>}`, `{soma:...}`) resolvidos no
+ * nível atual dos poderes e avisa dos marcadores que não existem. Some quando o texto não tem marcador.
+ */
+export function previaViva(ctx: Contexto, obter: () => string): HTMLElement {
+  const previa = h('p', { class: 'previa detalhe' });
+  ctx.ligar(() => {
+    const cru = obter();
+    previa.hidden = !cru.includes('{');
+    if (previa.hidden) return;
+    const invalidos = marcadoresInvalidos(ctx.ficha(), cru);
+    definirTexto(previa, `Prévia: ${resolverTexto(ctx.ficha(), cru)}${invalidos.length > 0 ? ` (marcador não reconhecido: ${invalidos.join(', ')})` : ''}`);
+    previa.classList.toggle('previa-erro', invalidos.length > 0);
+  });
+  return previa;
+}
 
 export const somaFontes = (fontes: Fonte[]): number => fontes.reduce((s, f) => s + f.valor, 0);
 

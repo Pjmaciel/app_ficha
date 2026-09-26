@@ -15,7 +15,11 @@ describe('importarXlsx', () => {
   const ficha = carregar();
 
   it('reproduz exatamente o JSON de referência do Alexsander, depois da migração que semeia as escalas dos poderes', () => {
-    expect(migrarFicha(ficha)).toStrictEqual({ ...alexsander, revisaoDados: 0 });
+    // Diferença documentada: a planilha traz a Proteção Divina no nível 1; a ficha embutida a tem no nível 2
+    // (confirmado pelo jogador, revisão 4), o que muda PV (3404 → 3904), usos (1 → 2) e os efeitos por nível.
+    const esperado = structuredClone(alexsander) as unknown as Ficha;
+    esperado.poderes.find((p) => p.id === 'protecao_divina')!.nivel = 1;
+    expect(migrarFicha(ficha)).toStrictEqual({ ...esperado, revisaoDados: 0 });
   });
 
   it('o importador não semeia escalas: os poderes saem sem escala e as fontes continuam nomeadas', () => {

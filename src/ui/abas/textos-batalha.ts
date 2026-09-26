@@ -1,7 +1,9 @@
 // Seção "Textos da batalha" (dentro da aba Poderes): edita as ações, as reações e os lembretes da aba Batalha.
+import { marcadoresDisponiveis } from '../../engine';
 import type { AcaoBatalha, Reacao } from '../../model/types';
+import { previaViva } from '../componentes';
 import type { Contexto } from '../contexto';
-import { campo, entradaTexto, h, novoIdItem } from '../dom';
+import { campo, entradaTexto, h, limpar, novoIdItem } from '../dom';
 
 interface OpcoesLista<T> {
   titulo: string;
@@ -49,11 +51,31 @@ function editorLista<T>(ctx: Contexto, itens: T[], op: OpcoesLista<T>): HTMLElem
     }, op.adicionar));
 }
 
+/** Lista dos marcadores aceitos hoje, com o valor no nível atual dos poderes (refeita a cada mudança). */
+function ajudaMarcadores(ctx: Contexto): HTMLElement {
+  const lista = h('ul', { class: 'lista-marcadores' });
+  ctx.ligar(() => {
+    limpar(lista);
+    for (const m of marcadoresDisponiveis(ctx.ficha())) {
+      lista.append(h('li', {}, h('code', {}, m.marcador), h('span', { class: 'detalhe' }, ` ${m.rotulo}: ${m.valor.toLocaleString('pt-BR')}`)));
+    }
+  });
+  return h('details', { class: 'ajuda-marcadores' },
+    h('summary', {}, 'Marcadores disponíveis'),
+    h('p', { class: 'detalhe' },
+      'O texto guarda o marcador e o número aparece na hora de exibir: subir o poder muda tudo junto. '
+      + 'Use {poder.<poder>.<efeito>}, {poder.<poder>.nivel} e {soma:<poder>.<efeito>+<poder>.<efeito>}; '
+      + '{poder.<poder>.<efeito>.porPonto} traz o valor por ponto.'),
+    lista);
+}
+
 export function secaoTextosBatalha(ctx: Contexto): HTMLElement {
   const f = ctx.ficha;
   return h('section', { class: 'textos-batalha', 'aria-label': 'Textos da batalha' },
     h('h2', {}, 'Textos da batalha'),
-    h('p', { class: 'detalhe' }, 'Aparecem na aba Batalha. Edite, adicione ou remova à vontade.'),
+    h('p', { class: 'detalhe' },
+      'Aparecem na aba Batalha. Edite, adicione ou remova à vontade. Os números dos poderes entram por marcadores, e a prévia mostra o texto resolvido.'),
+    ajudaMarcadores(ctx),
     editorLista<AcaoBatalha>(ctx, f().acoes, {
       titulo: 'Ações', adicionar: 'Adicionar ação', vazio: 'Nenhuma ação cadastrada.',
       ajuda: 'Ações livres, como as de Tsu real: nome, rolagem em texto (ex.: "1d×48 direto no PV") e notas.',
@@ -63,6 +85,7 @@ export function secaoTextosBatalha(ctx: Contexto): HTMLElement {
         campo('Nome', entradaTexto(a.nome, (v) => { a.nome = v; mudou(); }, 'Nome da ação')),
         campo('Rolagem', entradaTexto(a.rolagem, (v) => { a.rolagem = v; mudou(); }, 'Ex.: 1d×48 direto no PV')),
         campo('Notas', areaTexto(a.notas, (v) => { a.notas = v; mudou(); })),
+        previaViva(ctx, () => [a.nome, a.rolagem, a.notas].filter(Boolean).join(' · ')),
       ],
     }),
     editorLista<Reacao>(ctx, f().reacoes, {
@@ -73,6 +96,7 @@ export function secaoTextosBatalha(ctx: Contexto): HTMLElement {
       campos: (x, _i, mudou) => [
         campo('Situação', entradaTexto(x.situacao, (v) => { x.situacao = v; mudou(); }, 'Situação')),
         campo('Resposta', areaTexto(x.resposta, (v) => { x.resposta = v; mudou(); })),
+        previaViva(ctx, () => `${x.situacao}: ${x.resposta}`),
       ],
     }),
     editorLista<string>(ctx, f().lembretes, {
@@ -82,6 +106,7 @@ export function secaoTextosBatalha(ctx: Contexto): HTMLElement {
       novo: () => '',
       campos: (texto, i, mudou) => [
         campo('Texto', areaTexto(texto, (v) => { f().lembretes[i] = v; mudou(); })),
+        previaViva(ctx, () => f().lembretes[i] ?? ''),
       ],
     }));
 }

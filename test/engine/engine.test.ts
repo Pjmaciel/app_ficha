@@ -228,8 +228,8 @@ describe('pvBase e pvTotal', () => {
     expect(pvBase(ficha)).toBe(2904);
   });
 
-  it('total soma os PV extras (Proteção Divina +500 = 3404)', () => {
-    expect(pvTotal(ficha)).toBe(3404);
+  it('total soma os PV extras (Proteção Divina nível 2: +1000 = 3904; a planilha traz o nível 1, com 3404)', () => {
+    expect(pvTotal(ficha)).toBe(3904);
   });
 
   it('acompanha alterações de fortitude e de PV extras', () => {
@@ -237,7 +237,7 @@ describe('pvBase e pvTotal', () => {
     f.atributos.fortitude.extras = [{ nome: 'X', valor: 2 }];
     f.pvExtras.push({ nome: 'Y', valor: 100 });
     expect(pvBase(f)).toBe(12 * 244);
-    expect(pvTotal(f)).toBe(12 * 244 + 600);
+    expect(pvTotal(f)).toBe(12 * 244 + 1100);
   });
 });
 
@@ -412,7 +412,7 @@ describe('tsuValor', () => {
 describe('novaSessao', () => {
   it('começa com PV total cheio, fadiga zero e sem usos', () => {
     const s = novaSessao(ficha);
-    expect(s.pvAtual).toBe(3404);
+    expect(s.pvAtual).toBe(3904);
     expect(s.fadiga).toBe(0);
     expect(s.anotacoes).toBe('');
     expect(s).not.toHaveProperty('rolagens');
@@ -564,7 +564,7 @@ describe('resumoBatalha', () => {
 
   it('traz o card Minha rodada: PV, fadiga, rolagem base, arma e Velocidade Divina', () => {
     const r = resumo();
-    expect(r.pv).toEqual({ atual: 3404, total: 3404 });
+    expect(r.pv).toEqual({ atual: 3904, total: 3904 });
     expect(r.fadiga).toBe(0);
     expect(r.rolagemBase).toBe('2d×100');
     expect(r.armaPrincipal).toBe('Jikar');
@@ -608,7 +608,7 @@ describe('resumoBatalha', () => {
     expect(nomes).toEqual(['Portador da Jikar', 'Proteção Divina', 'Lugan Completo']);
     const protecao = resumo().protecoes.find((p) => p.id === 'protecao_divina');
     expect(protecao?.descricao).toContain('absorve 200');
-    expect(protecao?.uso).toMatchObject({ limite: 1, restantes: 1 });
+    expect(protecao?.uso).toMatchObject({ limite: 2, restantes: 2 });
   });
 
   it('desmarcar um poder o tira das absorções e o tipo removido o esconde', () => {
@@ -621,7 +621,7 @@ describe('resumoBatalha', () => {
   it('lista os usos apenas de poderes com usos por dia ou custo de fadiga', () => {
     expect(resumo().usos.map((u) => [u.id, u.restantes])).toEqual([
       ['golpe_devastador', 3],
-      ['protecao_divina', 1],
+      ['protecao_divina', 2],
       ['o_filho_de_hagashi', 1],
     ]);
   });
@@ -647,8 +647,11 @@ describe('resumoBatalha', () => {
     const f = clonar();
     f.poderes = f.poderes.filter((p) => p.id !== 'golpe_devastador');
     expect(resumoBatalha(f, novaSessao(f)).golpes[0]).toMatchObject({ pontos: null, pressaoKm2: null, uso: null });
+    // Sem o valor do golpe, vale o efeito pressao_km2 do poder; sem os dois, não há pressão.
     const g = clonar();
     delete g.golpes[0].pressaoPorPonto;
+    expect(resumoBatalha(g, novaSessao(g)).golpes[0].pressaoKm2).toBe(24);
+    g.poderes.find((p) => p.id === 'golpe_devastador')!.escala!.efeitos = [];
     expect(resumoBatalha(g, novaSessao(g)).golpes[0].pressaoKm2).toBeNull();
   });
 

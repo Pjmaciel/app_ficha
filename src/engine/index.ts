@@ -1,15 +1,17 @@
-import { PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
+import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao, textoVivo } from '../model/batalha-padrao';
 import { escalaPadrao } from '../model/escalas-padrao';
 import type {
   AcaoBatalha,
   Atributo,
   AtributoId,
   ChaveCombate,
+  EfeitoEscalavel,
   EscalaPoder,
   Ficha,
   Fonte,
   FonteDerivada,
   GolpeEspecial,
+  PatamarPoder,
   Poder,
   Reacao,
   Regras,
@@ -95,6 +97,186 @@ export function dadosDoGolpe(f: Ficha, g: GolpeEspecial): { ataque: number; dano
     ataque: g.dadosAtaqueExtras + (ativo?.escala?.dadosAtaquePorNivel ?? 0) * nivel,
     dano: g.dadosDanoExtras + (ativo?.escala?.dadosDanoPorNivel ?? 0) * nivel,
   };
+}
+
+// ---------- Efeitos escaláveis, textos vivos, patamares e pilar ----------
+
+/** Efeito de um poder no nível atual. Os de ids reservados vêm dos campos `...PorNivel` da escala. */
+export interface EfeitoResolvido {
+  id: string;
+  rotulo: string;
+  porPonto: number;
+  fixo: number;
+  aCada: number;
+  unidade?: string;
+  /** fixo + porPonto × ⌊nível ÷ aCada⌋; zero para poder removido ou sem nível. */
+  valor: number;
+  /** Id reservado (parcela de combate, dano, atributo, PV, usos, fiéis ou dados do golpe): a fonte é um campo `...PorNivel`. */
+  reservado: boolean;
+}
+
+const ROTULO_CHAVE: Record<ChaveCombate, string> = {
+  ataqueArmaBranca: 'Ataque com arma branca', ataqueMagico: 'Ataque mágico', ataqueLuta: 'Ataque de luta',
+  ataqueArmaFogo: 'Ataque com arma de fogo', esquivar: 'Esquivar', bloquear: 'Bloquear', aparar: 'Aparar',
+};
+
+/** Id reservado do efeito de combate: `ataque_<chave sem o prefixo>` (armaBranca, magico, luta, armaFogo) ou `defesa_<chave>`. */
+export function idEfeitoCombate(chave: ChaveCombate): string {
+  return chave.startsWith('ataque') ? `ataque_${chave[6].toLowerCase()}${chave.slice(7)}` : `defesa_${chave}`;
+}
+
+/** Valor de um efeito no nível dado: fixo + porPonto × ⌊nível ÷ aCada⌋ (aCada ausente ou inválido vale 1). */
+export function valorDoEfeito(e: Pick<EfeitoEscalavel, 'porPonto' | 'fixo' | 'aCada'>, nivel: number): number {
+  const passo = e.aCada !== undefined && e.aCada > 0 ? e.aCada : 1;
+  return (e.fixo ?? 0) + e.porPonto * Math.floor(nivel / passo);
+}
+
+/**
+ * Todos os efeitos do poder no nível atual: primeiro os reservados (derivados dos campos `...PorNivel`), depois os
+ * de `escala.efeitos`; se um id se repete, vale o primeiro. Poder removido ou sem nível (ou zero) tem valores zero.
+ */
+export function efeitosDoPoder(p: Poder): EfeitoResolvido[] {
+  const e = p.escala;
+  if (!e) return [];
+  const nivel = p.tipo === 'removido' ? 0 : nivelDoPoder(p);
+  const lista: EfeitoResolvido[] = [];
+  const somar = (id: string, rotulo: string, porPonto: number, extra: Partial<EfeitoEscalavel>, reservado: boolean): void => {
+    if (lista.some((x) => x.id === id)) return;
+    const base = { porPonto, fixo: extra.fixo, aCada: extra.aCada };
+    lista.push({
+      id, rotulo, porPonto, fixo: extra.fixo ?? 0, aCada: extra.aCada !== undefined && extra.aCada > 0 ? extra.aCada : 1,
+      unidade: extra.unidade, valor: nivel > 0 ? valorDoEfeito(base, nivel) : 0, reservado,
+    });
+  };
+  for (const chave of Object.keys(ROTULO_CHAVE) as ChaveCombate[]) {
+    const c = e.ataquePorNivel?.[chave];
+    if (c !== undefined && c !== 0) somar(idEfeitoCombate(chave), ROTULO_CHAVE[chave], c, {}, true);
+  }
+  if (e.danoPorNivel) somar('dano', 'Dano fixo', e.danoPorNivel, {}, true);
+  if (e.atributoPorNivel && e.atributoPorNivel.valor !== 0) {
+    somar(`atributo_${e.atributoPorNivel.atributo}`, ROTULO_ATRIBUTO[e.atributoPorNivel.atributo], e.atributoPorNivel.valor, {}, true);
+  }
+  if (e.pvPorNivel) somar('pv_extra', 'PV extras', e.pvPorNivel, { unidade: 'PV' }, true);
+  if (e.usosPorNivel !== undefined) somar('usos', 'Usos por dia', e.usosPorNivel, {}, true);
+  if (e.fieisPorNivel) somar('fieis', 'Fiéis', e.fieisPorNivel, {}, true);
+  if (e.dadosAtaquePorNivel) somar('dados_ataque', 'Dados de ataque do golpe', e.dadosAtaquePorNivel, { unidade: 'd' }, true);
+  if (e.dadosDanoPorNivel) somar('dados_dano', 'Dados de dano do golpe', e.dadosDanoPorNivel, { unidade: 'd' }, true);
+  for (const x of e.efeitos ?? []) somar(x.id, x.rotulo, x.porPonto, x, false);
+  return lista;
+}
+
+/** Valor de um efeito de um poder da ficha; `nivel` devolve o nível. Nulo se o poder ou o efeito não existe. */
+export function valorDeEfeito(f: Ficha, poderId: string, efeito: string, parte?: 'porPonto' | 'fixo'): number | null {
+  const p = f.poderes.find((x) => x.id === poderId);
+  if (!p) return null;
+  if (efeito === 'nivel' && parte === undefined) return nivelDoPoder(p);
+  const e = efeitosDoPoder(p).find((x) => x.id === efeito);
+  if (!e) return null;
+  return parte === 'porPonto' ? e.porPonto : parte === 'fixo' ? e.fixo : e.valor;
+}
+
+/** Número em português, com separador de milhar (8.000). */
+export const formatarNumero = (n: number): string => n.toLocaleString('pt-BR');
+
+const MARCADOR = /\{([^{}]*)\}/g;
+
+/** Referência `<poder>.<efeito>[.porPonto|.fixo]`, com o prefixo `poder.` opcional; nulo se não tiver a forma. */
+function lerReferencia(ref: string): { poderId: string; efeito: string; parte?: 'porPonto' | 'fixo' } | null {
+  const partes = ref.trim().split('.');
+  if (partes[0] === 'poder') partes.shift();
+  const parte = partes[2];
+  if (partes.length < 2 || partes.length > 3 || partes.some((x) => x === '')) return null;
+  if (parte !== undefined && parte !== 'porPonto' && parte !== 'fixo') return null;
+  return { poderId: partes[0], efeito: partes[1], parte };
+}
+
+/** Valor de um marcador (`poder.<id>.<efeito>` ou `soma:<a>+<b>`); nulo se algum poder ou efeito não existe. */
+function valorDoMarcador(f: Ficha, corpo: string): number | null {
+  const ehSoma = corpo.startsWith('soma:');
+  if (!ehSoma && !corpo.startsWith('poder.')) return null;
+  const refs = (ehSoma ? corpo.slice(5).split('+') : [corpo]).map(lerReferencia);
+  let total = 0;
+  for (const r of refs) {
+    const v = r ? valorDeEfeito(f, r.poderId, r.efeito, r.parte) : null;
+    if (v === null) return null;
+    total += v;
+  }
+  return total;
+}
+
+/**
+ * Resolve os marcadores vivos do texto: `{poder.<id>.<efeito>}`, `{poder.<id>.nivel}` (e `.porPonto`/`.fixo` do efeito)
+ * e `{soma:<id>.<efeito>+<id>.<efeito>}`. O que não for um marcador conhecido fica como está, para o erro aparecer.
+ */
+export function resolverTexto(f: Ficha, texto: string): string {
+  return texto.replace(MARCADOR, (inteiro, corpo: string) => {
+    const v = valorDoMarcador(f, corpo);
+    return v === null ? inteiro : formatarNumero(v);
+  });
+}
+
+/** Marcadores do texto que parecem vivos (`{poder...}`, `{soma:...}`) mas não resolvem: poder ou efeito inexistente. */
+export function marcadoresInvalidos(f: Ficha, texto: string): string[] {
+  const invalidos: string[] = [];
+  for (const [inteiro, corpo] of texto.matchAll(MARCADOR)) {
+    if ((corpo.startsWith('poder.') || corpo.startsWith('soma:')) && valorDoMarcador(f, corpo) === null) invalidos.push(inteiro);
+  }
+  return invalidos;
+}
+
+/** Marcadores que a ficha aceita hoje, com o valor no nível atual (ajuda da edição de textos). */
+export function marcadoresDisponiveis(f: Ficha): { marcador: string; rotulo: string; valor: number }[] {
+  return f.poderes.filter((p) => p.tipo !== 'removido').flatMap((p) => [
+    { marcador: `{poder.${p.id}.nivel}`, rotulo: `${p.nome}: nível`, valor: nivelDoPoder(p) },
+    ...efeitosDoPoder(p).map((e) => ({ marcador: `{poder.${p.id}.${e.id}}`, rotulo: `${p.nome}: ${e.rotulo}`, valor: e.valor })),
+  ]);
+}
+
+export interface PatamarAtingido { nivel: number; texto: string; atingido: boolean }
+
+/** Patamares do poder em ordem de nível, marcando os atingidos, e o próximo (o primeiro ainda não atingido). Textos já resolvidos. */
+export function patamaresDoPoder(
+  f: Ficha,
+  p: Poder,
+): { patamares: PatamarAtingido[]; atingidos: PatamarAtingido[]; proximo: PatamarAtingido | null } {
+  const nivel = p.tipo === 'removido' ? 0 : nivelDoPoder(p);
+  const patamares = [...(p.escala?.patamares ?? [])]
+    .sort((a: PatamarPoder, b: PatamarPoder) => a.nivel - b.nivel)
+    .map((x) => ({ nivel: x.nivel, texto: resolverTexto(f, x.texto), atingido: nivel >= x.nivel }));
+  return { patamares, atingidos: patamares.filter((x) => x.atingido), proximo: patamares.find((x) => !x.atingido) ?? null };
+}
+
+export interface LinhaEfeito { id: string; rotulo: string; valor: number; texto: string }
+
+/** Efeitos que o card não repete: combate (já em Ataques e Defesas) e usos (o card tem o contador de usos). */
+const EFEITOS_FORA_DO_CARD = /^(ataque_|defesa_|dano$|dados_|usos$)/;
+
+/** Efeitos do card do poder na aba Batalha: os com valor diferente de zero, sem as parcelas de combate e os usos. */
+export function linhasDeEfeitos(p: Poder): LinhaEfeito[] {
+  return efeitosDoPoder(p)
+    .filter((e) => !EFEITOS_FORA_DO_CARD.test(e.id) && e.valor !== 0)
+    .map((e) => {
+      const sinal = e.reservado && (e.id === 'pv_extra' || e.id.startsWith('atributo_')) ? comSinal(e.valor) : formatarNumero(e.valor);
+      return { id: e.id, rotulo: e.rotulo, valor: e.valor, texto: `${e.rotulo}: ${sinal}${e.unidade ? ` ${e.unidade}` : ''}` };
+    });
+}
+
+/** Pilar como exibido na ficha: "Justiça 3" (só o nível se o pilar não tem nome; "—" se nenhum dos dois). */
+export function pilarTexto(f: Ficha): string {
+  const nome = f.identidade.pilarLuganico.trim();
+  const nivel = f.identidade.pilarNivel;
+  if (nome === '') return nivel > 0 ? String(nivel) : '—';
+  return `${nome} ${nivel}`;
+}
+
+export interface AlertaPilar { poderId: string; nome: string; requer: number; atual: number }
+
+/** Poderes ativos que exigem um aspecto do mundo (pilar) acima do atual: só funcionam quando o aspecto chega ao nível pedido. */
+export function alertasPilar(f: Ficha): AlertaPilar[] {
+  const atual = f.identidade.pilarNivel;
+  return f.poderes
+    .filter((p) => p.tipo !== 'removido' && p.requerPilar !== undefined && p.requerPilar > atual)
+    .map((p) => ({ poderId: p.id, nome: p.nome, requer: p.requerPilar as number, atual }));
 }
 
 /** Base do atributo: bônus de nível + pontos distribuídos (sem extras). */
@@ -359,7 +541,7 @@ export interface GolpeBatalha {
   dano: ResultadoDano;
   /** Pontos do golpe: o nível do poder de mesmo id (nulo se não houver). */
   pontos: number | null;
-  /** Pressão em km²: pontos × pressaoPorPonto (nulo se faltar um dos dois). */
+  /** Pressão em km²: pontos × `pressaoPorPonto` do golpe; sem ele, o efeito `pressao_km2` do poder (nulo se faltar ambos). */
   pressaoKm2: number | null;
   /** Usos por dia do poder correspondente; nulo se ele não existe ou não é consumível. */
   uso: UsoPoder | null;
@@ -367,7 +549,22 @@ export interface GolpeBatalha {
 
 export interface DefesaBatalha { chave: 'aparar' | 'bloquear' | 'esquivar'; nome: string; rolagem: RolagemPronta }
 
-export interface ProtecaoBatalha { id: string; nome: string; nivel: number | null; descricao: string; uso: UsoPoder | null }
+export interface ProtecaoBatalha {
+  id: string;
+  nome: string;
+  nivel: number | null;
+  /** Descrição com os marcadores vivos resolvidos. */
+  descricao: string;
+  uso: UsoPoder | null;
+  /** Efeitos no nível atual, gerados de `escala` (sem as parcelas de combate). */
+  efeitos: LinhaEfeito[];
+  /** Todos os patamares do poder, com os atingidos marcados. */
+  patamares: PatamarAtingido[];
+  /** Primeiro patamar ainda não atingido; nulo se todos foram ou o poder não tem patamares. */
+  proximoPatamar: PatamarAtingido | null;
+  /** Resumo em uma linha: efeitos e patamares (atingidos e próximo). */
+  resumo: string;
+}
 
 export interface ResumoBatalha {
   pv: { atual: number; total: number };
@@ -395,7 +592,20 @@ const DEFESAS_BATALHA: { chave: DefesaBatalha['chave']; nome: string }[] = [
   { chave: 'esquivar', nome: 'Esquivar' },
 ];
 
-/** Tudo o que a aba Batalha exibe, já calculado; não altera a ficha nem a sessão. */
+/** Card de proteção do poder: efeitos no nível atual, patamares e o resumo em uma linha. */
+function protecaoDoPoder(f: Ficha, p: Poder, uso: UsoPoder | null): ProtecaoBatalha {
+  const efeitos = linhasDeEfeitos(p);
+  const { patamares, atingidos, proximo } = patamaresDoPoder(f, p);
+  const partes = efeitos.map((e) => e.texto);
+  for (const x of atingidos) partes.push(`nível ${x.nivel}: ${x.texto}`);
+  if (proximo) partes.push(`próximo patamar: nível ${proximo.nivel}, ${proximo.texto}`);
+  return {
+    id: p.id, nome: p.nome, nivel: p.nivel, descricao: resolverTexto(f, p.descricao), uso,
+    efeitos, patamares, proximoPatamar: proximo, resumo: partes.join('; '),
+  };
+}
+
+/** Tudo o que a aba Batalha exibe, já calculado (textos vivos resolvidos); não altera a ficha nem a sessão. */
 export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
   const poderDe = (id: string) => f.poderes.find((p) => p.id === id);
   const velocidade = poderDe('velocidade_divina');
@@ -406,13 +616,17 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
     const r = golpe(f, g);
     const poder = poderDe(g.id);
     const pontos = poder && poder.tipo !== 'removido' ? poder.nivel : null;
+    // Pressão: o valor por ponto do próprio golpe, se houver; senão o efeito `pressao_km2` do poder de mesmo id.
+    const pressaoDoPoder = poder && poder.tipo !== 'removido' ? efeitosDoPoder(poder).find((e) => e.id === 'pressao_km2') : undefined;
     return {
       id: g.id,
       nome: g.nome,
       ataque: { dados: r.ataqueDados, bonus: r.ataqueTotal, texto: formatarRolagem(r.ataqueDados, r.ataqueTotal) },
       dano: r.dano,
       pontos,
-      pressaoKm2: pontos !== null && g.pressaoPorPonto !== undefined ? pontos * g.pressaoPorPonto : null,
+      pressaoKm2: g.pressaoPorPonto !== undefined
+        ? (pontos !== null ? pontos * g.pressaoPorPonto : null)
+        : (pressaoDoPoder?.valor ?? null),
       uso: usoOuNulo(poder),
     };
   });
@@ -427,12 +641,10 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
     danoBasico: dano(f),
     golpes,
     defesas: DEFESAS_BATALHA.map(({ chave, nome }) => ({ chave, nome, rolagem: rolagemPronta(combate(f, chave)) })),
-    acoes: f.acoes.map((a) => ({ ...a })),
-    protecoes: f.poderes.filter(mostraNaBatalha).map((p) => ({
-      id: p.id, nome: p.nome, nivel: p.nivel, descricao: p.descricao, uso: usoOuNulo(p),
-    })),
-    reacoes: f.reacoes.map((r) => ({ ...r })),
-    lembretes: [...f.lembretes],
+    acoes: f.acoes.map((a) => ({ ...a, nome: resolverTexto(f, a.nome), rolagem: resolverTexto(f, a.rolagem), notas: resolverTexto(f, a.notas) })),
+    protecoes: f.poderes.filter(mostraNaBatalha).map((p) => protecaoDoPoder(f, p, usoOuNulo(p))),
+    reacoes: f.reacoes.map((r) => ({ situacao: resolverTexto(f, r.situacao), resposta: resolverTexto(f, r.resposta) })),
+    lembretes: f.lembretes.map((t) => resolverTexto(f, t)),
     usos: f.poderes.filter(poderUsavel).map((p) => usoDoPoder(p, sessao)),
   };
 }
@@ -456,7 +668,7 @@ const FIEIS_POR_PADRAO: Record<ChaveCombate, number | null> = {
 
 /** Forma mínima da ficha versão 1 lida pela migração (o restante é ignorado). */
 interface FichaV1 {
-  identidade: Ficha['identidade'];
+  identidade: Omit<Ficha['identidade'], 'armaPrincipal' | 'pilarNivel'>;
   pontosIniciais: number;
   atributos: Record<AtributoId, { bonus: number; pontos: number; bonusExtra: number }>;
   pericias: Ficha['pericias'];
@@ -497,13 +709,15 @@ function migrarV1(v1: FichaV1): Ficha {
     };
     if (p.custoFadiga !== undefined) poder.custoFadiga = p.custoFadiga;
     if (p.usosPorDia !== undefined) poder.usosPorDia = p.usosPorDia;
+    // Só os efeitos informativos: as parcelas numéricas ficariam somadas em dobro ao bônus passivo opaco da versão 1.
+    semearEfeitos(poder);
     return poder;
   });
 
   return {
     versao: 2,
     revisaoDados: 0,
-    identidade: { ...v1.identidade, armaPrincipal: '' },
+    identidade: { ...v1.identidade, armaPrincipal: '', pilarNivel: PILAR_NIVEL_PADRAO },
     regras: { pontosIniciais: v1.pontosIniciais, ...REGRAS_PADRAO },
     atributos,
     pericias: v1.pericias,
@@ -522,8 +736,10 @@ function migrarV1(v1: FichaV1): Ficha {
 }
 
 /** Ficha versão 2 salva antes da aba Batalha: os campos dela podem faltar. */
-type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados'> &
-  Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados'>>;
+type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados' | 'identidade'> &
+  Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados'>> & {
+    identidade: Omit<Ficha['identidade'], 'pilarNivel'> & { pilarNivel?: number };
+  };
 
 /**
  * Completa a versão 2 com os valores padrão da aba Batalha. Cada lista ausente recebe os textos iniciais.
@@ -541,10 +757,11 @@ function completarBatalha(f: FichaV2Anterior): Ficha {
   }
   return {
     ...f,
+    identidade: { ...f.identidade, pilarNivel: f.identidade.pilarNivel ?? PILAR_NIVEL_PADRAO },
     revisaoDados: f.revisaoDados ?? 0,
-    acoes: f.acoes ?? acoesPadrao(),
-    lembretes: f.lembretes ?? lembretesPadrao(),
-    reacoes: f.reacoes ?? reacoesPadrao(),
+    acoes: f.acoes?.map((a) => ({ ...a, rolagem: textoVivo(a.rolagem), notas: textoVivo(a.notas) })) ?? acoesPadrao(),
+    lembretes: f.lembretes?.map(textoVivo) ?? lembretesPadrao(),
+    reacoes: f.reacoes?.map((r) => ({ ...r, resposta: textoVivo(r.resposta) })) ?? reacoesPadrao(),
   };
 }
 
@@ -613,9 +830,23 @@ function converterPoder(f: Ficha, p: Poder): void {
   if (Object.keys(escala).length > 0) p.escala = escala;
 }
 
-/** Poderes já com `escala` (mesmo vazia) são respeitados; os conhecidos sem ela recebem a semente. */
+/**
+ * Efeitos e patamares do livro para o poder conhecido que ainda não os tem (lista ausente; uma lista vazia é escolha do
+ * jogador e é respeitada, como a escala vazia `{}`). Não há valor salvo a converter: os efeitos só acrescentam alcance, absorção e textos.
+ */
+function semearEfeitos(p: Poder): void {
+  const semente = escalaPadrao(p.id);
+  if (!semente || (p.escala !== undefined && Object.keys(p.escala).length === 0)) return;
+  if (semente.efeitos !== undefined && p.escala?.efeitos === undefined) p.escala = { ...p.escala, efeitos: semente.efeitos };
+  if (semente.patamares !== undefined && p.escala?.patamares === undefined) p.escala = { ...p.escala, patamares: semente.patamares };
+}
+
+/** Poderes já com `escala` (mesmo vazia) são respeitados; os conhecidos sem ela recebem a semente; os efeitos ausentes são semeados. */
 function aplicarEscalas(f: Ficha): Ficha {
-  for (const p of f.poderes) if (p.escala === undefined) converterPoder(f, p);
+  for (const p of f.poderes) {
+    if (p.escala === undefined) converterPoder(f, p);
+    semearEfeitos(p);
+  }
   return f;
 }
 

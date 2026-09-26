@@ -136,7 +136,8 @@ describe('importarJson e a escala por nível dos poderes', () => {
 
   it('a ficha salva antes da escala é migrada: as fontes viram parcelas derivadas e os totais não mudam', () => {
     const f = importarJson(JSON.stringify(antiga));
-    expect(f).toStrictEqual({ ...ficha, revisaoDados: 0 });
+    // A planilha traz a Proteção Divina no nível 1; a ficha embutida, no 2 (confirmado pelo jogador).
+    expect(f).toStrictEqual({ ...structuredClone(ficha), poderes: ficha.poderes.map((p) => (p.id === 'protecao_divina' ? { ...p, nivel: 1 } : p)), revisaoDados: 0 });
   });
 
   it('aceita escala completa e a preserva na ida e volta', () => {
@@ -145,7 +146,7 @@ describe('importarJson e a escala por nível dos poderes', () => {
       pvPorNivel: 5, usosPorNivel: 1, fieisPorNivel: 100, dadosAtaquePorNivel: 1, dadosDanoPorNivel: 1,
     };
     const f = importarJson(comEscala(escala));
-    expect(f.poderes[0].escala).toEqual(escala);
+    expect(f.poderes[0].escala).toMatchObject(escala);
     expect(importarJson(exportarJson(f))).toStrictEqual(f);
   });
 

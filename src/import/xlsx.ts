@@ -12,7 +12,7 @@ import type {
   TipoPoder,
   Tsu,
 } from '../model/types';
-import { PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
+import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
 
 /** Regras do contrato v2 que a planilha não traz em células numéricas próprias. */
 const NIVEL_REFERENCIA = 41;
@@ -355,6 +355,7 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
       raca: texto(lugan, 'D9'),
       reino: texto(lugan, 'D10'),
       pilarLuganico: texto(lugan, 'I7'),
+      pilarNivel: PILAR_NIVEL_PADRAO,
       nivel: numero(lugan, 'I8'),
       nivelLuganico: numero(lugan, 'I9'),
       basePv: numero(lugan, 'I10'),

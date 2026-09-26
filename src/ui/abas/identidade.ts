@@ -1,12 +1,12 @@
 // Aba Identidade: dados do personagem, níveis, pontos de vida, experiência e regras.
-import { fontesDerivadasPv, pvBase, pvTotal } from '../../engine';
+import { fontesDerivadasPv, pilarTexto, pvBase, pvTotal } from '../../engine';
 import type { Ficha } from '../../model/types';
 import { editorFontes } from '../componentes';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, entradaNumero, entradaTexto, h } from '../dom';
 
 type CampoTexto = 'nome' | 'jogador' | 'raca' | 'reino' | 'pilarLuganico' | 'armaPrincipal';
-type CampoNumeroId = 'nivel' | 'nivelLuganico' | 'basePv';
+type CampoNumeroId = 'nivel' | 'nivelLuganico' | 'basePv' | 'pilarNivel';
 type CampoRegra = keyof Ficha['regras'];
 
 export function abaIdentidade(ctx: Contexto): HTMLElement {
@@ -24,6 +24,9 @@ export function abaIdentidade(ctx: Contexto): HTMLElement {
   const xp = (rotulo: string, chave: 'total' | 'atual'): HTMLElement =>
     campo(rotulo, entradaNumero(f().xp[chave], (v) => { f().xp[chave] = v ?? 0; ctx.mudou(); }, { min: 0 }));
 
+  const pilarExibido = h('strong', {});
+  ctx.ligar(() => definirTexto(pilarExibido, pilarTexto(f())));
+
   const pvBaseTexto = h('strong', {});
   const pvTotalTexto = h('strong', {});
   ctx.ligar(() => {
@@ -36,7 +39,10 @@ export function abaIdentidade(ctx: Contexto): HTMLElement {
       h('h3', {}, 'Personagem'),
       h('div', { class: 'campos' },
         texto('Nome', 'nome'), texto('Jogador', 'jogador'), texto('Raça', 'raca'),
-        texto('Reino', 'reino'), texto('Pilar lugânico', 'pilarLuganico'), texto('Arma principal', 'armaPrincipal'))),
+        texto('Reino', 'reino'), texto('Pilar lugânico', 'pilarLuganico'), numeroId('Nível do pilar (aspecto do mundo, 1 a 5)', 'pilarNivel', 0),
+        texto('Arma principal', 'armaPrincipal')),
+      h('p', { class: 'detalhe' }, 'Pilar exibido na ficha: ', pilarExibido,
+        '. Poderes com "Pilar mínimo" acima desse nível geram um alerta e só funcionam quando o aspecto do mundo chegar a ele.')),
     h('section', { class: 'cartao' },
       h('h3', {}, 'Níveis e experiência'),
       h('div', { class: 'campos' },

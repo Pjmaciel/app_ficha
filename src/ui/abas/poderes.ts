@@ -1,9 +1,9 @@
 // Aba Poderes: cadastro completo; poderes do tipo "removido" continuam listados, em cinza.
-import { comSinal, mostraNaBatalha, usosPorDiaDoPoder } from '../../engine';
-import type { AtributoId, ChaveCombate, EscalaPoder, Poder, TipoPoder } from '../../model/types';
-import { ATRIBUTOS, CHAVES_COMBATE, ROTULO_ATRIBUTO, ROTULO_COMBATE, ROTULO_TIPO_PODER } from '../componentes';
+import { comSinal, efeitosDoPoder, formatarNumero, mostraNaBatalha, usosPorDiaDoPoder } from '../../engine';
+import type { AtributoId, ChaveCombate, EfeitoEscalavel, EscalaPoder, PatamarPoder, Poder, TipoPoder } from '../../model/types';
+import { ATRIBUTOS, CHAVES_COMBATE, previaViva, ROTULO_ATRIBUTO, ROTULO_COMBATE, ROTULO_TIPO_PODER } from '../componentes';
 import type { Contexto } from '../contexto';
-import { campo, definirTexto, definirValor, entradaNumero, entradaTexto, h, novoIdItem, selecao } from '../dom';
+import { campo, definirTexto, definirValor, entradaNumero, entradaTexto, h, limpar, novoIdItem, selecao } from '../dom';
 import { secaoTextosBatalha } from './textos-batalha';
 
 const TIPOS = Object.keys(ROTULO_TIPO_PODER) as TipoPoder[];
@@ -43,7 +43,109 @@ export function resumoEfeitos(p: Poder): string {
   if (e.fieisPorNivel) partes.push(`${(e.fieisPorNivel * nivel).toLocaleString('pt-BR')} fiéis`);
   if (e.dadosAtaquePorNivel) partes.push(`golpe: ${comSinal(e.dadosAtaquePorNivel * nivel)}d de ataque`);
   if (e.dadosDanoPorNivel) partes.push(`golpe: ${comSinal(e.dadosDanoPorNivel * nivel)}d de dano`);
+  for (const x of efeitosDoPoder(p)) {
+    if (!x.reservado && x.valor !== 0) partes.push(`${x.rotulo.toLowerCase()} ${formatarNumero(x.valor)}${x.unidade ? ` ${x.unidade}` : ''}`);
+  }
   return partes.length > 0 ? `No nível ${nivel}: ${partes.join('; ')}.` : 'Sem escala numérica.';
+}
+
+/** Identificador de efeito: sem pontos, chaves nem espaços (são delimitadores dos marcadores de texto). */
+const idValido = (texto: string): string => texto.trim().replace(/[.{}\s]+/g, '_');
+
+/**
+ * Efeitos escaláveis do poder (alcance, absorção, criaturas etc.): valor = fixo + por ponto × ⌊nível ÷ a cada⌋.
+ * Cada efeito vira o marcador `{poder.<id do poder>.<id do efeito>}` nos textos da batalha.
+ */
+function secaoEfeitos(ctx: Contexto, p: Poder): HTMLElement {
+  const lista = h('ul', { class: 'lista-efeitos' });
+  const efeitos = (): EfeitoEscalavel[] => (p.escala ??= {}).efeitos ??= [];
+
+  const desenhar = (focar = false): void => {
+    limpar(lista);
+    const atuais = p.escala?.efeitos ?? [];
+    if (atuais.length === 0) lista.append(h('li', { class: 'vazio' }, 'Nenhum efeito escalável cadastrado.'));
+    atuais.forEach((x, i) => {
+      const valor = h('strong', { class: 'valor-efeito' });
+      ctx.ligar(() => {
+        const e = efeitosDoPoder(p).find((y) => y.id === x.id);
+        definirTexto(valor, e ? `No nível ${p.nivel ?? 0}: ${formatarNumero(e.valor)}${x.unidade ? ` ${x.unidade}` : ''}` : 'Id repetido: vale o primeiro.');
+      });
+      const numero = (rotulo: string, atual: number | undefined, gravar: (v: number | null) => void, min?: number): HTMLElement =>
+        campo(rotulo, entradaNumero(atual ?? null, (v) => { gravar(v); ctx.mudou(); }, { aceitaVazio: true, min }));
+      const id = entradaTexto(x.id, (v) => { x.id = idValido(v); ctx.mudou(); }, 'id_do_efeito');
+      id.addEventListener('change', () => { id.value = x.id; });
+      lista.append(h('li', { class: 'item-efeito', role: 'group', 'aria-label': `Efeito ${i + 1}` },
+        h('div', { class: 'campos' },
+          campo('Rótulo', entradaTexto(x.rotulo, (v) => { x.rotulo = v; ctx.mudou(); }, 'Ex.: Criaturas protegidas')),
+          campo('Id (usado nos marcadores)', id),
+          numero('Por ponto', x.porPonto, (v) => { x.porPonto = v ?? 0; }),
+          numero('Fixo (ajuste)', x.fixo, (v) => { if (v === null) delete x.fixo; else x.fixo = v; }),
+          numero('A cada N níveis (vazio = 1)', x.aCada, (v) => { if (v === null) delete x.aCada; else x.aCada = v; }, 1),
+          campo('Unidade', entradaTexto(x.unidade ?? '', (v) => { if (v === '') delete x.unidade; else x.unidade = v; ctx.mudou(); }, 'km², criaturas'))),
+        h('p', { class: 'detalhe' }, valor),
+        h('button', {
+          type: 'button', class: 'remover', 'aria-label': `Remover o efeito ${x.rotulo || i + 1}`,
+          onclick: () => { efeitos().splice(i, 1); desenhar(); ctx.mudou(); },
+        }, 'Remover efeito')));
+    });
+    if (focar) lista.lastElementChild?.querySelector<HTMLElement>('input')?.focus();
+  };
+  desenhar();
+
+  return h('div', { class: 'efeitos-poder' },
+    h('h4', {}, 'Efeitos por nível'),
+    h('p', { class: 'detalhe' },
+      'Valor = fixo + por ponto × ⌊nível ÷ a cada⌋. Os efeitos de ataque, defesa, dano, atributo, PV e usos são os coeficientes acima; aqui ficam os demais.'),
+    lista,
+    h('button', {
+      type: 'button',
+      onclick: () => {
+        efeitos().push({ id: `efeito_${efeitos().length + 1}`, rotulo: 'Novo efeito', porPonto: 0 });
+        desenhar(true);
+        ctx.mudou();
+      },
+    }, 'Adicionar efeito'));
+}
+
+/** Patamares do poder: a partir de certo nível vale um texto (aceita marcadores vivos). A aba Batalha mostra os atingidos e o próximo. */
+function secaoPatamares(ctx: Contexto, p: Poder): HTMLElement {
+  const lista = h('ul', { class: 'lista-efeitos' });
+  const patamares = (): PatamarPoder[] => (p.escala ??= {}).patamares ??= [];
+
+  const desenhar = (focar = false): void => {
+    limpar(lista);
+    const atuais = p.escala?.patamares ?? [];
+    if (atuais.length === 0) lista.append(h('li', { class: 'vazio' }, 'Nenhum patamar cadastrado.'));
+    atuais.forEach((x, i) => {
+      const texto = h('textarea', { rows: 2 });
+      texto.value = x.texto;
+      texto.addEventListener('input', () => { x.texto = texto.value; ctx.mudou(); });
+      lista.append(h('li', { class: 'item-efeito', role: 'group', 'aria-label': `Patamar ${i + 1}` },
+        h('div', { class: 'campos' },
+          campo('A partir do nível', entradaNumero(x.nivel, (v) => { x.nivel = v ?? 0; ctx.mudou(); }, { min: 0 })),
+          campo('Texto', texto)),
+        previaViva(ctx, () => x.texto),
+        h('button', {
+          type: 'button', class: 'remover', 'aria-label': `Remover o patamar do nível ${x.nivel}`,
+          onclick: () => { patamares().splice(i, 1); desenhar(); ctx.mudou(); },
+        }, 'Remover patamar')));
+    });
+    if (focar) lista.lastElementChild?.querySelector<HTMLElement>('input')?.focus();
+  };
+  desenhar();
+
+  return h('div', { class: 'efeitos-poder' },
+    h('h4', {}, 'Patamares'),
+    lista,
+    h('button', {
+      type: 'button',
+      onclick: () => {
+        const ultimo = patamares().reduce((m, x) => Math.max(m, x.nivel), 0);
+        patamares().push({ nivel: ultimo + 1, texto: '' });
+        desenhar(true);
+        ctx.mudou();
+      },
+    }, 'Adicionar patamar'));
 }
 
 /** Escala editável do poder: coeficientes por nível; campo vazio remove o coeficiente. */
@@ -107,7 +209,9 @@ function secaoEscala(ctx: Contexto, p: Poder, usos: HTMLInputElement): HTMLEleme
     h('div', { class: 'campos' },
       ...outros,
       campo('Atributo por nível', seletor),
-      campo('Valor do atributo por nível', valor)));
+      campo('Valor do atributo por nível', valor)),
+    secaoEfeitos(ctx, p),
+    secaoPatamares(ctx, p));
 }
 
 export function abaPoderes(ctx: Contexto): HTMLElement {
@@ -143,8 +247,14 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
         campo('Nível (vazio = sem nível)', entradaNumero(p.nivel, (v) => { p.nivel = v; ctx.mudou(); }, { min: 0, aceitaVazio: true })),
         campo('Tipo', tipo),
         campo('Custo de fadiga', entradaOpcional('custoFadiga')),
-        campo('Usos por dia', usos)),
+        campo('Usos por dia', usos),
+        campo('Pilar mínimo (vazio = nenhum)', entradaNumero(p.requerPilar ?? null, (v) => {
+          if (v === null) delete p.requerPilar;
+          else p.requerPilar = v;
+          ctx.mudou();
+        }, { min: 0, aceitaVazio: true }))),
       campo('Descrição', descricao),
+      previaViva(ctx, () => p.descricao),
       secaoEscala(ctx, p, usos),
       h('label', { class: 'marcador' }, marca, h('span', {}, 'Mostrar na aba Batalha (absorções e proteções)')),
       h('button', {

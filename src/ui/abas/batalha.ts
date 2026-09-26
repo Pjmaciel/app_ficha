@@ -4,7 +4,7 @@
 import { poderUsavel, resumoBatalha, usoDoPoder, usosPorDiaDoPoder, type ResumoBatalha } from '../../engine';
 import type { ChaveCombate, Poder } from '../../model/types';
 import type { Contexto } from '../contexto';
-import { campo, definirTexto, definirValor, entradaNumero, h, inteiro } from '../dom';
+import { campo, definirTexto, definirValor, entradaNumero, h, inteiro, limpar } from '../dom';
 import { aplicarPv, descansar, limitarPv, mudarFadiga, usarPoder } from '../sessao';
 import { cartaoValor, linhasCombate, linhasDano } from './resumo';
 
@@ -156,11 +156,21 @@ function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTM
       : null);
 }
 
-function cartaoAcao(a: { nome: string; rolagem: string; notas: string }): HTMLElement {
-  return h('article', { class: 'cartao acao' },
-    h('h3', {}, a.nome || 'Sem nome'),
-    a.rolagem ? h('p', { class: 'valor-medio' }, a.rolagem) : null,
-    a.notas ? h('p', { class: 'detalhe' }, a.notas) : null);
+/** Cartão de ação: nome, rolagem e notas já com os marcadores vivos resolvidos (refeito a cada mudança). */
+function cartaoAcao(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTMLElement {
+  const nome = h('h3', {});
+  const rolagem = h('p', { class: 'valor-medio' });
+  const notas = h('p', { class: 'detalhe' });
+  ctx.ligar(() => {
+    const a = r().acoes[indice];
+    if (!a) return;
+    definirTexto(nome, a.nome || 'Sem nome');
+    definirTexto(rolagem, a.rolagem);
+    rolagem.hidden = !a.rolagem;
+    definirTexto(notas, a.notas);
+    notas.hidden = !a.notas;
+  });
+  return h('article', { class: 'cartao acao' }, nome, rolagem, notas);
 }
 
 function secaoAtaques(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
@@ -170,7 +180,7 @@ function secaoAtaques(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
     cartaoAtaqueNormal(ctx, r),
     ...ctx.ficha().golpes.map((_, i) => cartaoGolpe(ctx, r, i)),
     acoes.length > 0 ? h('h3', { class: 'subtitulo' }, 'Ações de Tsu real e outras') : null,
-    acoes.length > 0 ? h('div', { class: 'grade grade-larga' }, ...acoes.map(cartaoAcao)) : null);
+    acoes.length > 0 ? h('div', { class: 'grade grade-larga' }, ...acoes.map((_, i) => cartaoAcao(ctx, r, i))) : null);
 }
 
 function secaoDefesas(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
@@ -185,17 +195,44 @@ function secaoDefesas(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
       }))));
 }
 
+/**
+ * Card de absorção de um poder, gerado dos efeitos no nível atual (valores refeitos a cada mudança), com os patamares
+ * atingidos e o próximo. A descrição do poder fica recolhida: ela é texto livre e pode ter números da planilha.
+ */
+function cartaoProtecao(ctx: Contexto, r: () => ResumoBatalha, id: string, temUso: boolean): HTMLElement {
+  const proteger = (): ResumoBatalha['protecoes'][number] | undefined => r().protecoes.find((x) => x.id === id);
+  const titulo = h('h3', {});
+  const efeitos = h('ul', { class: 'efeitos-protecao', 'aria-label': 'Efeitos no nível atual' });
+  const patamares = h('ul', { class: 'patamares', 'aria-label': 'Patamares' });
+  const proximo = h('p', { class: 'proximo-patamar' });
+  const descricao = h('p', { class: 'descricao' });
+  const bloco = h('details', { class: 'descricao-poder' }, h('summary', {}, 'Descrição do poder'), descricao);
+  ctx.ligar(() => {
+    const p = proteger();
+    if (!p) return;
+    limpar(titulo);
+    titulo.append(p.nome || 'Sem nome');
+    if (p.nivel !== null) titulo.append(h('span', { class: 'detalhe' }, ` · nível ${p.nivel}`));
+    limpar(efeitos);
+    for (const e of p.efeitos) efeitos.append(h('li', {}, e.texto));
+    efeitos.hidden = p.efeitos.length === 0;
+    limpar(patamares);
+    for (const x of p.patamares.filter((y) => y.atingido)) patamares.append(h('li', { class: 'atingido' }, `Nível ${x.nivel}: ${x.texto}`));
+    patamares.hidden = patamares.childElementCount === 0;
+    definirTexto(proximo, p.proximoPatamar ? `Próximo patamar: nível ${p.proximoPatamar.nivel}, ${p.proximoPatamar.texto}` : '');
+    proximo.hidden = p.proximoPatamar === null;
+    definirTexto(descricao, p.descricao || 'Sem descrição.');
+  });
+  return h('article', { class: 'cartao protecao' }, titulo, efeitos, patamares, proximo, bloco, temUso ? controleUso(ctx, id) : null);
+}
+
 function secaoProtecoes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
   const protecoes = r().protecoes;
   return h('section', { 'aria-label': 'Absorções e proteções' },
     h('h2', {}, 'Absorções e proteções'),
     protecoes.length === 0
       ? h('p', { class: 'vazio' }, 'Nenhum poder marcado para aparecer aqui. Marque "Mostrar na aba Batalha" na aba Poderes.')
-      : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) =>
-        h('article', { class: 'cartao protecao' },
-          h('h3', {}, p.nome || 'Sem nome', p.nivel !== null ? h('span', { class: 'detalhe' }, ` · nível ${p.nivel}`) : null),
-          h('p', { class: 'descricao' }, p.descricao || 'Sem descrição.'),
-          p.uso ? controleUso(ctx, p.id) : null))));
+      : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) => cartaoProtecao(ctx, r, p.id, p.uso !== null))));
 }
 
 function secaoQuandoAtacado(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
@@ -207,17 +244,30 @@ function secaoQuandoAtacado(ctx: Contexto, r: () => ResumoBatalha): HTMLElement 
     defesas,
     reacoes.length === 0
       ? h('p', { class: 'vazio' }, 'Nenhuma reação cadastrada.')
-      : h('ul', { class: 'reacoes' }, ...reacoes.map((x) =>
-        h('li', {}, h('strong', {}, x.situacao || 'Sem situação'), h('span', {}, x.resposta)))));
+      : h('ul', { class: 'reacoes' }, ...reacoes.map((_, i) => {
+        const situacao = h('strong', {});
+        const resposta = h('span', {});
+        ctx.ligar(() => {
+          const x = r().reacoes[i];
+          if (!x) return;
+          definirTexto(situacao, x.situacao || 'Sem situação');
+          definirTexto(resposta, x.resposta);
+        });
+        return h('li', {}, situacao, resposta);
+      })));
 }
 
-function secaoLembretes(ctx: Contexto): HTMLElement {
+function secaoLembretes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
   const lembretes = ctx.ficha().lembretes;
   return h('section', { class: 'cartao', 'aria-label': 'Lembretes' },
     h('h2', {}, 'Lembretes'),
     lembretes.length === 0
       ? h('p', { class: 'vazio' }, 'Nenhum lembrete cadastrado.')
-      : h('ul', { class: 'lembretes' }, ...lembretes.map((t) => h('li', {}, t))));
+      : h('ul', { class: 'lembretes' }, ...lembretes.map((_, i) => {
+        const item = h('li', {});
+        ctx.ligar(() => definirTexto(item, r().lembretes[i] ?? ''));
+        return item;
+      })));
 }
 
 export function abaBatalha(ctx: Contexto): HTMLElement {
@@ -228,6 +278,6 @@ export function abaBatalha(ctx: Contexto): HTMLElement {
     secaoDefesas(ctx, r),
     secaoProtecoes(ctx, r),
     secaoQuandoAtacado(ctx, r),
-    secaoLembretes(ctx),
+    secaoLembretes(ctx, r),
     h('p', { class: 'detalhe' }, 'Ações, reações e lembretes são editados na aba Poderes, na seção "Textos da batalha".'));
 }

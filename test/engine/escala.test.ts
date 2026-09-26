@@ -37,14 +37,24 @@ const TOTAIS: Record<ChaveCombate, number> = {
   ataqueArmaBranca: 1078, ataqueMagico: 781, ataqueLuta: 688, ataqueArmaFogo: 688, esquivar: 540, bloquear: 941, aparar: 1094,
 };
 
+/**
+ * A planilha traz Proteção Divina no nível 1; o jogador confirmou o nível 2 (revisão 4 dos dados). Esta é a única
+ * diferença entre a ficha embutida e a migração de uma ficha salva com os valores da planilha.
+ */
+const daPlanilha = (f: Ficha): Ficha => {
+  poder(f, 'protecao_divina').nivel = 1;
+  return f;
+};
+
 describe('a ficha atual continua com os mesmos totais', () => {
   it.each(Object.entries(TOTAIS))('%s = %i', (chave, total) => {
     expect(combate(ficha, chave as ChaveCombate).total).toBe(total);
   });
 
-  it('Força 322, PV 3404, dano básico e Golpe Devastador', () => {
+  it('Força 322, PV 3904 (3404 no nível 1 da planilha), dano básico e Golpe Devastador', () => {
     expect(totalAtributoFicha(ficha, 'forca')).toBe(322);
-    expect(pvTotal(ficha)).toBe(3404);
+    expect(pvTotal(ficha)).toBe(3904);
+    expect(pvTotal(daPlanilha(clonar()))).toBe(3404);
     expect(dano(ficha).texto).toBe('3d×322 +120');
     const g = golpe(ficha, ficha.golpes[0]);
     expect(g.ataqueDados).toBe(8);
@@ -52,19 +62,22 @@ describe('a ficha atual continua com os mesmos totais', () => {
   });
 
   it('os poderes conhecidos trazem a escala do livro', () => {
-    expect(poder(ficha, 'lugan_da_batalha').escala).toEqual({
+    expect(poder(ficha, 'lugan_da_batalha').escala).toMatchObject({
       ataquePorNivel: Object.fromEntries(CHAVES.map((c) => [c, 50])),
       danoPorNivel: 20,
     });
-    expect(poder(ficha, 'campeao_do_combate_divino').escala).toEqual({
+    expect(poder(ficha, 'campeao_do_combate_divino').escala).toMatchObject({
       ataquePorNivel: { ataqueArmaBranca: 70, aparar: 70 },
       danoPorNivel: 20,
     });
     expect(poder(ficha, 'forca_das_montanhas_divinas').escala?.atributoPorNivel).toEqual({ atributo: 'forca', valor: 60 });
-    expect(poder(ficha, 'protecao_divina').escala).toEqual({ pvPorNivel: 500, usosPorNivel: 1 });
-    expect(poder(ficha, 'o_filho_de_hagashi').escala).toEqual({ fieisPorNivel: 8000 });
-    expect(poder(ficha, 'manipulador_de_tsu_real').escala).toEqual({ ataquePorNivel: { ataqueMagico: 70 } });
-    expect(poder(ficha, 'velocidade_divina').escala).toBeUndefined();
+    expect(poder(ficha, 'protecao_divina').escala).toMatchObject({ pvPorNivel: 500, usosPorNivel: 1 });
+    expect(poder(ficha, 'o_filho_de_hagashi').escala).toMatchObject({ fieisPorNivel: 8000 });
+    expect(poder(ficha, 'manipulador_de_tsu_real').escala).toMatchObject({ ataquePorNivel: { ataqueMagico: 70 } });
+    // Velocidade Divina não tem parcela numérica na ficha: só efeitos e o patamar do nível 4.
+    const velocidade = poder(ficha, 'velocidade_divina').escala!;
+    expect(velocidade.ataquePorNivel).toBeUndefined();
+    expect(velocidade.patamares?.map((x) => x.nivel)).toEqual([4]);
   });
 
   it('a ficha guarda só as parcelas manuais, com os ajustes do mestre', () => {
@@ -97,9 +110,11 @@ describe('subir o nível de um poder recalcula a ficha', () => {
     expect(golpe(f, f.golpes[0]).ataqueTotal).toBe(1128);
   });
 
-  it('Proteção Divina 2: PV total 3904 e 2 usos por dia', () => {
-    const f = clonar();
+  it('Proteção Divina 1 → 2: PV total 3404 → 3904 e 1 → 2 usos por dia', () => {
+    const f = daPlanilha(clonar());
     const p = poder(f, 'protecao_divina');
+    expect(pvTotal(f)).toBe(3404);
+    expect(usosPorDiaDoPoder(p)).toBe(1);
     p.nivel = 2;
     expect(pvTotal(f)).toBe(3904);
     expect(usosPorDiaDoPoder(p)).toBe(2);
@@ -176,7 +191,7 @@ describe('subir o nível de um poder recalcula a ficha', () => {
     f.pvExtras.push({ nome: 'Bônus manual', valor: 100 });
     f.atributos.forca.extras.push({ nome: 'Poção', valor: 3 });
     expect(combate(f, 'ataqueArmaBranca').total).toBe(1085);
-    expect(pvTotal(f)).toBe(3504);
+    expect(pvTotal(f)).toBe(4004);
     expect(totalAtributoFicha(f, 'forca')).toBe(325);
   });
 });
@@ -195,7 +210,7 @@ describe('parcelas derivadas', () => {
     expect(fontesDerivadasDano(ficha).map((d) => d.valor)).toEqual([60, 60, 10]);
     expect(fontesDerivadasAtributo(ficha, 'forca').map((d) => [d.poderId, d.valor])).toEqual([['forca_das_montanhas_divinas', 60]]);
     expect(fontesDerivadasAtributo(ficha, 'mental')).toEqual([]);
-    expect(fontesDerivadasPv(ficha).map((d) => [d.poderId, d.valor])).toEqual([['protecao_divina', 500]]);
+    expect(fontesDerivadasPv(ficha).map((d) => [d.poderId, d.valor])).toEqual([['protecao_divina', 1000]]);
   });
 
   it('aparecem na composição do combate, depois da perícia e antes das manuais, e a soma bate com o total', () => {
@@ -256,7 +271,7 @@ describe('migração para a escala por nível', () => {
 
   it('a ficha salva antes da escala vira a ficha semeada, sem mudar nenhum total', () => {
     const f = migrada();
-    expect(f).toStrictEqual({ ...ficha, revisaoDados: 0 });
+    expect(f).toStrictEqual({ ...daPlanilha(clonar()), revisaoDados: 0 });
     for (const [chave, total] of Object.entries(TOTAIS)) expect(combate(f, chave as ChaveCombate).total).toBe(total);
     expect(totalAtributoFicha(f, 'forca')).toBe(322);
     expect(pvTotal(f)).toBe(3404);
@@ -291,7 +306,9 @@ describe('migração para a escala por nível', () => {
     for (const c of CHAVES) bruta.combate[c].fontes = bruta.combate[c].fontes.filter((x) => x.nome !== 'Lugan da Batalha');
     bruta.dano.fixos = bruta.dano.fixos.filter((x) => x.nome !== 'Lugan da Batalha');
     const f = migrarFicha(bruta);
-    expect(poder(f, 'lugan_da_batalha').escala).toBeUndefined();
+    // Sem valor salvo a converter, a parcela numérica não entra (ficaria em dobro); só os efeitos informativos.
+    expect(poder(f, 'lugan_da_batalha').escala?.ataquePorNivel).toBeUndefined();
+    expect(poder(f, 'lugan_da_batalha').escala?.danoPorNivel).toBeUndefined();
     expect(combate(f, 'ataqueArmaBranca').total).toBe(1078 - 150);
     expect(dano(f).fixo).toBe(120 - 60);
   });
@@ -327,7 +344,7 @@ describe('migração para a escala por nível', () => {
       xp: { total: 0, atual: 0 },
     };
     const f = migrarFicha(v1);
-    expect(f.poderes[0].escala).toBeUndefined();
+    expect(f.poderes[0].escala?.ataquePorNivel).toBeUndefined();
     expect(f.combate.ataqueArmaBranca.fontes).toEqual([{ nome: 'Bônus passivo', valor: 50 }]);
   });
 });
