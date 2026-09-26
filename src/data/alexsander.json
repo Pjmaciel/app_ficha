@@ -1,0 +1,634 @@
+{
+  "versao": 1,
+  "identidade": {
+    "nome": "Alexsander Somar III",
+    "jogador": "Pablo Maciel",
+    "raca": "Meio Orc",
+    "reino": "Sodraria",
+    "pilarLuganico": "Senhor dos Ossos",
+    "nivel": 41,
+    "nivelLuganico": 3,
+    "basePv": 12
+  },
+  "pontosIniciais": 1018,
+  "atributos": {
+    "forca": {
+      "bonus": 23,
+      "pontos": 215,
+      "bonusExtra": 0
+    },
+    "agilidade": {
+      "bonus": 23,
+      "pontos": 225,
+      "bonusExtra": 0
+    },
+    "reflexos": {
+      "bonus": 23,
+      "pontos": 160,
+      "bonusExtra": 0
+    },
+    "fortitude": {
+      "bonus": 23,
+      "pontos": 195,
+      "bonusExtra": 0
+    },
+    "distancia": {
+      "bonus": 23,
+      "pontos": 105,
+      "bonusExtra": 0
+    },
+    "mental": {
+      "bonus": 23,
+      "pontos": 118,
+      "bonusExtra": 0
+    }
+  },
+  "pericias": [
+    {
+      "id": "atuacao",
+      "nome": "Atuação",
+      "grupo": "artes",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "canto",
+      "nome": "Canto",
+      "grupo": "artes",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "danca",
+      "nome": "Dança",
+      "grupo": "artes",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "instrumentos_musicais",
+      "nome": "Instrumentos Musicais",
+      "grupo": "artes",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "oficios",
+      "nome": "Ofícios",
+      "grupo": "artes",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "geografia",
+      "nome": "Geografia",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "historia",
+      "nome": "História",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "quimica",
+      "nome": "Química",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "ecologia",
+      "nome": "Ecologia",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "medicina",
+      "nome": "Medicina",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "veterinaria",
+      "nome": "Veterinária",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "manipular_tsu_ciencia",
+      "nome": "Manipular Tsu",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "meteorologia",
+      "nome": "Meteorologia",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "ciencias_ocultas",
+      "nome": "Ciências Ocultas",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "engenharia_ciencia",
+      "nome": "Engenharia",
+      "grupo": "ciencias",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "armadilha",
+      "nome": "Armadilha",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "arrombamento",
+      "nome": "Arrombamento",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "disfarce",
+      "nome": "Disfarce",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "furtividade",
+      "nome": "Furtividade",
+      "grupo": "crime",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "falsificacao",
+      "nome": "Falsificação",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "punga",
+      "nome": "Punga",
+      "grupo": "crime",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "rastreio",
+      "nome": "Rastreio",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "jogos_de_azar",
+      "nome": "Jogos de Azar",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "fuga",
+      "nome": "Fuga",
+      "grupo": "crime",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "corrida",
+      "nome": "Corrida",
+      "grupo": "esporte",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "acrobacia",
+      "nome": "Acrobacia",
+      "grupo": "esporte",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "escalar",
+      "nome": "Escalar",
+      "grupo": "esporte",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "cavalgar",
+      "nome": "Cavalgar",
+      "grupo": "esporte",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "natacao",
+      "nome": "Natação",
+      "grupo": "esporte",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "criptografia",
+      "nome": "Criptografia",
+      "grupo": "idioma",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "leitura_labial",
+      "nome": "Leitura Labial",
+      "grupo": "idioma",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "linguagem_dos_sinais",
+      "nome": "Linguagem dos Sinais",
+      "grupo": "idioma",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "linguas_atuais",
+      "nome": "Línguas Atuais",
+      "grupo": "idioma",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "linguas_antigas",
+      "nome": "Línguas Antigas",
+      "grupo": "idioma",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "disfarce_inv",
+      "nome": "Disfarce",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "criptografia_inv",
+      "nome": "Criptografia",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "rastrear_inv",
+      "nome": "Rastrear",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "perceber",
+      "nome": "Perceber",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 336,
+      "graduacao": 0
+    },
+    {
+      "id": "sentir_motivacao",
+      "nome": "Sentir Motivação",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "ouvir",
+      "nome": "Ouvir",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "observar",
+      "nome": "Observar",
+      "grupo": "investigacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "blefar",
+      "nome": "Blefar",
+      "grupo": "manipulacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "lideranca",
+      "nome": "Liderança",
+      "grupo": "manipulacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "trato_social",
+      "nome": "Trato Social",
+      "grupo": "manipulacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "seducao",
+      "nome": "Sedução",
+      "grupo": "manipulacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "trato_com_animais",
+      "nome": "Trato com Animais",
+      "grupo": "manipulacao",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "intimidar",
+      "nome": "Intimidar",
+      "grupo": "manipulacao",
+      "atributo": "forca",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "escalar_sob",
+      "nome": "Escalar",
+      "grupo": "sobrevivencia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "armadilha_sob",
+      "nome": "Armadilha",
+      "grupo": "sobrevivencia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "meteorologia_sob",
+      "nome": "Meteorologia",
+      "grupo": "sobrevivencia",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "rastrear_sob",
+      "nome": "Rastrear",
+      "grupo": "sobrevivencia",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "perceber_sob",
+      "nome": "Perceber",
+      "grupo": "sobrevivencia",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "corrida_sob",
+      "nome": "Corrida",
+      "grupo": "sobrevivencia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "fuga_sob",
+      "nome": "Fuga",
+      "grupo": "sobrevivencia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "conducao",
+      "nome": "Condução",
+      "grupo": "tecnologia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "pilotagem",
+      "nome": "Pilotagem",
+      "grupo": "tecnologia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "velejar",
+      "nome": "Velejar",
+      "grupo": "tecnologia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "engenharia",
+      "nome": "Engenharia",
+      "grupo": "tecnologia",
+      "atributo": "mental",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "mecanica",
+      "nome": "Mecânica",
+      "grupo": "tecnologia",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "luta",
+      "nome": "Luta",
+      "grupo": "combate",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "manipular_tsu",
+      "nome": "Manipular Tsu",
+      "grupo": "combate",
+      "atributo": "mental",
+      "inicial": 336,
+      "graduacao": 0
+    },
+    {
+      "id": "espada",
+      "nome": "Espada",
+      "grupo": "combate",
+      "atributo": "agilidade",
+      "inicial": 336,
+      "graduacao": 0
+    },
+    {
+      "id": "arma_de_fogo",
+      "nome": "Arma de Fogo",
+      "grupo": "combate",
+      "atributo": "agilidade",
+      "inicial": 136,
+      "graduacao": 0
+    },
+    {
+      "id": "escudo",
+      "nome": "Escudo",
+      "grupo": "combate",
+      "atributo": "agilidade",
+      "inicial": 336,
+      "graduacao": 0
+    }
+  ],
+  "combate": {
+    "bonusPassivo": {
+      "ataqueArmaBranca": 50,
+      "ataqueMagico": 50,
+      "ataqueLuta": 50,
+      "ataqueArmaFogo": 50,
+      "esquivar": 50,
+      "bloquear": 50,
+      "aparar": 50
+    }
+  },
+  "poderes": [
+    {
+      "id": "velocidade_divina",
+      "nome": "Velocidade Divina",
+      "nivel": 1,
+      "descricao": "Dá uma ação de velocidade contra outro Lugan. Contra seres não lugânicos, dá três ações extras."
+    },
+    {
+      "id": "lugan_da_batalha",
+      "nome": "Lugan da Batalha",
+      "nivel": 1,
+      "descricao": "[+50] em qualquer ataque; [+50] em qualquer defesa; [+20] no final do dano."
+    },
+    {
+      "id": "golpe_devastador",
+      "nome": "Golpe Devastador de Lugan",
+      "nivel": 1,
+      "descricao": "3d×100 no ataque; 2d×100 no multiplicador de dano."
+    },
+    {
+      "id": "golpe_especial_campeao",
+      "nome": "Golpe Especial: Competência (Campeão das Nações)",
+      "nivel": 1,
+      "custoFadiga": 10,
+      "descricao": "10 Fadiga: escolha 1 efeito. 1 - Multiataque: atinge alvos = Agilidade. 2 - Ataque acelerado: dobra a Agilidade no ataque. 3 - Dano acelerado: soma Agilidade no dano. 25 Fadiga: usa os 3 efeitos na mesma rodada."
+    }
+  ],
+  "tsu": [
+    {
+      "elemento": "fogo",
+      "nivel": 6,
+      "real": false
+    },
+    {
+      "elemento": "agua",
+      "nivel": 6,
+      "real": false
+    },
+    {
+      "elemento": "ar",
+      "nivel": 6,
+      "real": false
+    },
+    {
+      "elemento": "terra",
+      "nivel": 6,
+      "real": true
+    },
+    {
+      "elemento": "luz",
+      "nivel": 6,
+      "real": false
+    },
+    {
+      "elemento": "trevas",
+      "nivel": 6,
+      "real": false
+    }
+  ],
+  "xp": {
+    "total": 0,
+    "atual": 0
+  }
+}

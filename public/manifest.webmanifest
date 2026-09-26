@@ -1,0 +1,13 @@
+{
+  "name": "Ficha Kitai",
+  "short_name": "Ficha Kitai",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1b1b1b",
+  "theme_color": "#1b1b1b",
+  "icons": [
+    { "src": "assets/retrato.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+  ]
+}
