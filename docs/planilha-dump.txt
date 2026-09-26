@@ -1,17 +1,18 @@
 
-########## SHEET LUGAN
+########## SHEET 'LUGAN' dims=A1:AG133 images=3
 B1: 'XP TOTAL'
-C1: FORMULA '=FICHA!H10+E4' => 0
+C1: FORMULA '=FICHA!H10+E4' => 12
 F1: 'LUGANS'
 E2: 'XP ATUAL'
+E4: 12.0
 C7: 'NOME: '
 D7: 'Alexsander Somar III '
 H7: 'PILAR LUGÂNICO:'
-I7: 'Senhor dos Ossos'
+I7: 'Justiça'
 C8: 'JOGADOR:'
 D8: 'Pablo Maciel'
 H8: 'NIVEL:'
-I8: 35.0
+I8: 41.0
 C9: 'RAÇA'
 D9: 'Meio Orc'
 H9: 'NÍVEL LUGÂNICO:'
@@ -30,362 +31,392 @@ E14: 'PONTOS'
 F14: 'BÔNUS '
 H14: 'PERÍCIAS '
 B15: 'FORÇA'
-C15: FORMULA '=D15+E15+F15' => 238
-D15: 23.0
+C15: FORMULA '=D15+E15+F15' => 322
+D15: 47.0
 E15: 215.0
+F15: 60.0
 H15: 'ARTES '
 I15: 'TOTAL'
 J15: 'INICIAL'
 K15: 'ATRIBU'
 L15: 'GRADUA'
 B16: 'AGILIDADE'
-C16: FORMULA '=D16+E16+F16' => 248
-D16: 23.0
+C16: FORMULA '=D16+E16+F16' => 272
+D16: 47.0
 E16: 225.0
 H16: 'ATUAÇÃO'
-I16: FORMULA '=J16+K16+L16' => 277
+I16: FORMULA '=J16+K16+L16' => 301
 J16: FORMULA '=FICHA!N16' => 136
-K16: FORMULA '=C20' => 141
+K16: FORMULA '=C20' => 165
 B17: 'REFLEXOS'
-C17: FORMULA '=D17+E17+F17' => 183
-D17: 23.0
+C17: FORMULA '=D17+E17+F17' => 207
+D17: 47.0
 E17: 160.0
 H17: 'CANTO '
-I17: FORMULA '=J17+K17+L17' => 277
+I17: FORMULA '=J17+K17+L17' => 301
 J17: FORMULA '=FICHA!N17' => 136
-K17: FORMULA '=$K$16' => 141
+K17: FORMULA '=$K$16' => 165
 B18: 'FORTITUDE'
-C18: FORMULA '=D18+E18+F18' => 218
-D18: 23.0
+C18: FORMULA '=D18+E18+F18' => 242
+D18: 47.0
 E18: 195.0
 H18: 'DANÇA'
-I18: FORMULA '=J18+K18+L18' => 277
+I18: FORMULA '=J18+K18+L18' => 301
 J18: FORMULA '=FICHA!N18' => 136
-K18: FORMULA '=$K$16' => 141
+K18: FORMULA '=$K$16' => 165
 B19: 'DISTÂNCIA '
-C19: FORMULA '=D19+E19+F19' => 128
-D19: 23.0
+C19: FORMULA '=D19+E19+F19' => 152
+D19: 47.0
 E19: 105.0
 H19: 'INSTRUMENTOS MUSICAIS'
-I19: FORMULA '=J19+K19+L19' => 277
+I19: FORMULA '=J19+K19+L19' => 301
 J19: FORMULA '=FICHA!N19' => 136
-K19: FORMULA '=$K$16' => 141
+K19: FORMULA '=$K$16' => 165
 B20: 'MENTAL'
-C20: FORMULA '=D20+E20+F20' => 141
-D20: 23.0
+C20: FORMULA '=D20+E20+F20' => 165
+D20: 47.0
 E20: 118.0
 H20: 'OFICIOS'
-I20: FORMULA '=J20+K20+L20' => 277
+I20: FORMULA '=J20+K20+L20' => 301
 J20: FORMULA '=FICHA!N20' => 136
-K20: FORMULA '=$K$16' => 141
+K20: FORMULA '=$K$16' => 165
 H21: 'CIÊNCIAS'
 B22: 'PV'
-C22: FORMULA '=I10*C18' => 2616
+C22: FORMULA '=I10*C18+F22' => 3404
+F22: 500.0
 H22: 'GEOGRAFIA '
-I22: FORMULA '=J22+K22+L22' => 277
+I22: FORMULA '=J22+K22+L22' => 301
 J22: FORMULA '=FICHA!N22' => 136
-K22: FORMULA '=$K$16' => 141
+K22: FORMULA '=$K$16' => 165
 H23: 'HISTÓRIA '
-I23: FORMULA '=J23+K23+L23' => 277
+I23: FORMULA '=J23+K23+L23' => 301
 J23: FORMULA '=FICHA!N23' => 136
-K23: FORMULA '=$K$16' => 141
+K23: FORMULA '=$K$16' => 165
 H24: 'QUIMICA'
-I24: FORMULA '=J24+K24+L24' => 277
+I24: FORMULA '=J24+K24+L24' => 301
 J24: FORMULA '=FICHA!N24' => 136
-K24: FORMULA '=$K$16' => 141
+K24: FORMULA '=$K$16' => 165
 B25: 'COMBATE'
 D25: 'TOTAL'
 E25: 'BÔNUS PASSIVO'
+F25: 'Dano B - [+1d] + 120 + 1[cada400 fieis]'
 H25: 'ECOLOGIA'
-I25: FORMULA '=J25+K25+L25' => 277
+I25: FORMULA '=J25+K25+L25' => 301
 J25: FORMULA '=FICHA!N25' => 136
-K25: FORMULA '=$K$16' => 141
+K25: FORMULA '=$K$16' => 165
 B26: 'ATAQUE ARMA BRANCA'
-D26: FORMULA '=I86+E26' => 634
-E26: 50.0
+D26: FORMULA '=I86+E26' => 1078
+E26: 470.0
+F26: '3dx100(jikar) + 1[200 fieis]'
 H26: 'MEDICINA'
-I26: FORMULA '=J26+K26+L26' => 277
+I26: FORMULA '=J26+K26+L26' => 301
 J26: FORMULA '=FICHA!N26' => 136
-K26: FORMULA '=$K$16' => 141
+K26: FORMULA '=$K$16' => 165
 B27: 'ATAQUE MÁGICO'
-D27: FORMULA '=I85+E27' => 527
-E27: 50.0
+D27: FORMULA '=I85+E27' => 781
+E27: 280.0
 H27: 'VETERINÁRIA'
-I27: FORMULA '=J27+K27+L27' => 277
+I27: FORMULA '=J27+K27+L27' => 301
 J27: FORMULA '=FICHA!N27' => 136
-K27: FORMULA '=$K$16' => 141
+K27: FORMULA '=$K$16' => 165
 B28: 'ATAQUE LUTA'
-D28: FORMULA '=I84+E28' => 434
-E28: 50.0
+D28: FORMULA '=I84+E28' => 688
+E28: 280.0
 H28: 'MANIPULAR TSU'
-I28: FORMULA '=J28+K28+L28' => 277
+I28: FORMULA '=J28+K28+L28' => 301
 J28: FORMULA '=FICHA!N28' => 136
-K28: FORMULA '=$K$16' => 141
+K28: FORMULA '=$K$16' => 165
 B29: 'ATAQUE ARMA FOGO'
-D29: FORMULA '=I87+E29' => 434
-E29: 50.0
+D29: FORMULA '=I87+E29' => 688
+E29: 280.0
 H29: 'METEREOLOGIA'
-I29: FORMULA '=J29+K29+L29' => 277
+I29: FORMULA '=J29+K29+L29' => 301
 J29: FORMULA '=FICHA!N29' => 136
-K29: FORMULA '=$K$16' => 141
+K29: FORMULA '=$K$16' => 165
 B30: 'ESQUIVAR'
-D30: FORMULA '=C17+3+E30' => 236
-E30: 50.0
+D30: FORMULA '=C17+3+E30' => 540
+E30: 330.0
+F30: '3dx100(jikar) + 1[100 fieis]'
 H30: 'CIÊNCIAS OCULTAS'
-I30: FORMULA '=J30+K30+L30' => 277
+I30: FORMULA '=J30+K30+L30' => 301
 J30: FORMULA '=FICHA!N30' => 136
-K30: FORMULA '=$K$16' => 141
+K30: FORMULA '=$K$16' => 165
 B31: 'BLOQUEAR'
-D31: FORMULA '=I88+3+E31' => 637
-E31: 50.0
+D31: FORMULA '=I88+3+E31' => 941
+E31: 330.0
+F31: '3dx100(jikar) + 1[100 fieis]'
 H31: 'ENGENHARIA'
-I31: FORMULA '=J31+K31+L31' => 277
+I31: FORMULA '=J31+K31+L31' => 301
 J31: FORMULA '=FICHA!N31' => 136
-K31: FORMULA '=$K$16' => 141
+K31: FORMULA '=$K$16' => 165
 B32: 'APARAR'
-D32: FORMULA '=I86-C19+C20+3+E32' => 650
-E32: 50.0
+D32: FORMULA '=I86-C19+C20+3+E32' => 1094
+E32: 470.0
+F32: '3dx100(jikar) + 1[200 fieis]'
 H32: 'CRIME '
 H33: 'ARMADILHA'
-I33: FORMULA '=J33+K33+L33' => 277
+I33: FORMULA '=J33+K33+L33' => 301
 J33: FORMULA '=FICHA!N33' => 136
-K33: FORMULA '=$K$29' => 141
+K33: FORMULA '=$K$29' => 165
 H34: 'ARROMBAMENTO'
-I34: FORMULA '=J34+K34+L34' => 277
+I34: FORMULA '=J34+K34+L34' => 301
 J34: FORMULA '=FICHA!N34' => 136
-K34: FORMULA '=$K$29' => 141
+K34: FORMULA '=$K$29' => 165
 H35: 'DISFARCE'
-I35: FORMULA '=J35+K35+L35' => 277
+I35: FORMULA '=J35+K35+L35' => 301
 J35: FORMULA '=FICHA!N35' => 136
-K35: FORMULA '=$K$29' => 141
+K35: FORMULA '=$K$29' => 165
 H36: 'FURTIVIDADE'
-I36: FORMULA '=J36+K36+L36' => 384
+I36: FORMULA '=J36+K36+L36' => 408
 J36: FORMULA '=FICHA!N36' => 136
-K36: FORMULA '=C16' => 248
+K36: FORMULA '=C16' => 272
 H37: 'FALSIFICAÇÃO'
-I37: FORMULA '=J37+K37+L37' => 277
+I37: FORMULA '=J37+K37+L37' => 301
 J37: FORMULA '=FICHA!N37' => 136
-K37: FORMULA '=$K$29' => 141
+K37: FORMULA '=$K$29' => 165
 H38: 'PUNGA'
-I38: FORMULA '=J38+K38+L38' => 384
+I38: FORMULA '=J38+K38+L38' => 408
 J38: FORMULA '=FICHA!N38' => 136
-K38: FORMULA '=C16' => 248
+K38: FORMULA '=C16' => 272
 H39: 'RASTREIO'
-I39: FORMULA '=J39+K39+L39' => 277
+I39: FORMULA '=J39+K39+L39' => 301
 J39: FORMULA '=FICHA!N39' => 136
-K39: FORMULA '=$K$29' => 141
+K39: FORMULA '=$K$29' => 165
 H40: 'JOGOS DE AZAR'
-I40: FORMULA '=J40+K40+L40' => 277
+I40: FORMULA '=J40+K40+L40' => 301
 J40: FORMULA '=FICHA!N40' => 136
-K40: FORMULA '=$K$35' => 141
+K40: FORMULA '=$K$35' => 165
 H41: 'FUGA'
-I41: FORMULA '=J41+K41+L41' => 277
+I41: FORMULA '=J41+K41+L41' => 301
 J41: FORMULA '=FICHA!N41' => 136
-K41: FORMULA '=$K$35' => 141
+K41: FORMULA '=$K$35' => 165
 H42: 'ESPORTE '
 H43: 'CORRIDA'
-I43: FORMULA '=J43+K43+L43' => 384
+I43: FORMULA '=J43+K43+L43' => 408
 J43: FORMULA '=FICHA!N43' => 136
-K43: FORMULA '=$K$38' => 248
+K43: FORMULA '=$K$38' => 272
 H44: 'ACROBACIA'
-I44: FORMULA '=J44+K44+L44' => 384
+I44: FORMULA '=J44+K44+L44' => 408
 J44: FORMULA '=FICHA!N44' => 136
-K44: FORMULA '=$K$38' => 248
+K44: FORMULA '=$K$38' => 272
 H45: 'ESCALAR'
-I45: FORMULA '=J45+K45+L45' => 384
+I45: FORMULA '=J45+K45+L45' => 408
 J45: FORMULA '=FICHA!N45' => 136
-K45: FORMULA '=$K$38' => 248
+K45: FORMULA '=$K$38' => 272
 H46: 'CAVALGAR'
-I46: FORMULA '=J46+K46+L46' => 384
+I46: FORMULA '=J46+K46+L46' => 408
 J46: FORMULA '=FICHA!N46' => 136
-K46: FORMULA '=$K$38' => 248
+K46: FORMULA '=$K$38' => 272
 H47: 'NATAÇÃO'
-I47: FORMULA '=J47+K47+L47' => 384
+I47: FORMULA '=J47+K47+L47' => 408
 J47: FORMULA '=FICHA!N47' => 136
-K47: FORMULA '=$K$38' => 248
+K47: FORMULA '=$K$38' => 272
 H48: 'IDIOMA'
 H49: 'CRIPTOGRAFIA'
-I49: FORMULA '=J49+K49+L49' => 277
+I49: FORMULA '=J49+K49+L49' => 301
 J49: FORMULA '=FICHA!N49' => 136
-K49: FORMULA '=$K$29' => 141
+K49: FORMULA '=$K$29' => 165
 H50: 'LEITURA LABIAL'
-I50: FORMULA '=J50+K50+L50' => 277
+I50: FORMULA '=J50+K50+L50' => 301
 J50: FORMULA '=FICHA!N50' => 136
-K50: FORMULA '=$K$29' => 141
+K50: FORMULA '=$K$29' => 165
 H51: 'LINGUAGEM DOS SINAIS'
-I51: FORMULA '=J51+K51+L51' => 277
+I51: FORMULA '=J51+K51+L51' => 301
 J51: FORMULA '=FICHA!N51' => 136
-K51: FORMULA '=$K$29' => 141
+K51: FORMULA '=$K$29' => 165
 H52: 'LÍNGUAS ATUAIS*'
-I52: FORMULA '=J52+K52+L52' => 277
+I52: FORMULA '=J52+K52+L52' => 301
 J52: FORMULA '=FICHA!N52' => 136
-K52: FORMULA '=$K$29' => 141
+K52: FORMULA '=$K$29' => 165
 H53: 'LÍNGUAS ANTIGAS*'
-I53: FORMULA '=J53+K53+L53' => 277
+I53: FORMULA '=J53+K53+L53' => 301
 J53: FORMULA '=FICHA!N53' => 136
-K53: FORMULA '=$K$29' => 141
+K53: FORMULA '=$K$29' => 165
 H54: 'INVESTIGAÇÃO '
 H55: 'DISFARCE'
-I55: FORMULA '=J55+K55+L55' => 277
+I55: FORMULA '=J55+K55+L55' => 301
 J55: FORMULA '=FICHA!N55' => 136
-K55: FORMULA '=$K$29' => 141
+K55: FORMULA '=$K$29' => 165
 H56: 'CRIPTOGRAFIA'
-I56: FORMULA '=J56+K56+L56' => 277
+I56: FORMULA '=J56+K56+L56' => 301
 J56: FORMULA '=FICHA!N56' => 136
-K56: FORMULA '=$K$29' => 141
+K56: FORMULA '=$K$29' => 165
 H57: 'RASTREAR'
-I57: FORMULA '=J57+K57+L57' => 277
+I57: FORMULA '=J57+K57+L57' => 301
 J57: FORMULA '=FICHA!N57' => 136
-K57: FORMULA '=$K$29' => 141
+K57: FORMULA '=$K$29' => 165
 H58: 'PERCEBER'
-I58: FORMULA '=J58+K58+L58' => 477
+I58: FORMULA '=J58+K58+L58' => 501
 J58: FORMULA '=FICHA!N58' => 336
-K58: FORMULA '=$K$29' => 141
+K58: FORMULA '=$K$29' => 165
 H59: 'SENTIR MOTIVAÇÃO'
-I59: FORMULA '=J59+K59+L59' => 277
+I59: FORMULA '=J59+K59+L59' => 301
 J59: FORMULA '=FICHA!N59' => 136
-K59: FORMULA '=$K$29' => 141
+K59: FORMULA '=$K$29' => 165
 H60: 'OUVIR'
-I60: FORMULA '=J60+K60+L60' => 277
+I60: FORMULA '=J60+K60+L60' => 301
 J60: FORMULA '=FICHA!N60' => 136
-K60: FORMULA '=$K$29' => 141
+K60: FORMULA '=$K$29' => 165
 H61: 'OBSERVAR'
-I61: FORMULA '=J61+K61+L61' => 277
+I61: FORMULA '=J61+K61+L61' => 301
 J61: FORMULA '=FICHA!N61' => 136
-K61: FORMULA '=$K$29' => 141
+K61: FORMULA '=$K$29' => 165
 H62: 'MANIPULAÇÃO '
 H63: 'BLEFAR '
-I63: FORMULA '=J63+K63+L63' => 277
+I63: FORMULA '=J63+K63+L63' => 301
 J63: FORMULA '=FICHA!N63' => 136
-K63: FORMULA '=$K$29' => 141
+K63: FORMULA '=$K$29' => 165
 H64: 'LIDERANÇA'
-I64: FORMULA '=J64+K64+L64' => 277
+I64: FORMULA '=J64+K64+L64' => 301
 J64: FORMULA '=FICHA!N64' => 136
-K64: FORMULA '=$K$29' => 141
+K64: FORMULA '=$K$29' => 165
 H65: 'TRATO SOCIAL'
-I65: FORMULA '=J65+K65+L65' => 277
+I65: FORMULA '=J65+K65+L65' => 301
 J65: FORMULA '=FICHA!N65' => 136
-K65: FORMULA '=$K$29' => 141
+K65: FORMULA '=$K$29' => 165
 H66: 'SEDUÇÃO'
-I66: FORMULA '=J66+K66+L66' => 277
+I66: FORMULA '=J66+K66+L66' => 301
 J66: FORMULA '=FICHA!N66' => 136
-K66: FORMULA '=$K$29' => 141
+K66: FORMULA '=$K$29' => 165
 H67: 'TRATO COM ANIMAIS'
-I67: FORMULA '=J67+K67+L67' => 277
+I67: FORMULA '=J67+K67+L67' => 301
 J67: FORMULA '=FICHA!N67' => 136
-K67: FORMULA '=$K$29' => 141
+K67: FORMULA '=$K$29' => 165
 H68: 'INTIMIDAR'
-I68: FORMULA '=J68+K68+L68' => 374
+I68: FORMULA '=J68+K68+L68' => 458
 J68: FORMULA '=FICHA!N68' => 136
-K68: FORMULA '=C15' => 238
+K68: FORMULA '=C15' => 322
 H69: 'SOBREVIVÊNCIA '
 H70: 'ESCALAR'
-I70: FORMULA '=J70+K70+L70' => 384
+I70: FORMULA '=J70+K70+L70' => 408
 J70: FORMULA '=FICHA!N70' => 136
-K70: FORMULA '=$K$38' => 248
+K70: FORMULA '=$K$38' => 272
 B71: 'PONTOS DE PODER 1 A CADA NÍVEL IMPAR'
 H71: 'ARMADILHA'
-I71: FORMULA '=J71+K71+L71' => 384
+I71: FORMULA '=J71+K71+L71' => 408
 J71: FORMULA '=FICHA!N71' => 136
-K71: FORMULA '=$K$38' => 248
+K71: FORMULA '=$K$38' => 272
 B72: 'PODERES LUGÂNICOS'
 D72: 'NÍVEL'
 E72: 'BÔNUS'
 H72: 'METEOROLOGIA'
-I72: FORMULA '=J72+K72+L72' => 277
+I72: FORMULA '=J72+K72+L72' => 301
 J72: FORMULA '=FICHA!N72' => 136
-K72: FORMULA '=$K$39' => 141
+K72: FORMULA '=$K$39' => 165
 B73: 'Velocidade Divina '
-D73: 1.0
+D73: 2.0
 E73: 'Dá uma ação de velocidade contra outro Lugan.\nContra seres não lugânicos, dá três ações extras.'
 H73: 'RASTREAR '
-I73: FORMULA '=J73+K73+L73' => 277
+I73: FORMULA '=J73+K73+L73' => 301
 J73: FORMULA '=FICHA!N73' => 136
-K73: FORMULA '=$K$39' => 141
+K73: FORMULA '=$K$39' => 165
 H74: 'PERCEBER'
-I74: FORMULA '=J74+K74+L74' => 277
+I74: FORMULA '=J74+K74+L74' => 301
 J74: FORMULA '=FICHA!N74' => 136
-K74: FORMULA '=$K$39' => 141
+K74: FORMULA '=$K$39' => 165
 H75: 'CORRIDA'
-I75: FORMULA '=J75+K75+L75' => 384
+I75: FORMULA '=J75+K75+L75' => 408
 J75: FORMULA '=FICHA!N75' => 136
-K75: FORMULA '=$K$38' => 248
+K75: FORMULA '=$K$38' => 272
 B76: 'Lugan da Batalha'
-D76: 1.0
-E76: '[+50] em qualquer ataque;\n[+50] em qualquer defesa;\n[+20] no final do dano.'
+D76: 3.0
+E76: FORMULA '= 50*D76' => 150
+F76: 'em qualquer ataque;'
 H76: 'FUGA'
-I76: FORMULA '=J76+K76+L76' => 384
+I76: FORMULA '=J76+K76+L76' => 408
 J76: FORMULA '=FICHA!N76' => 136
-K76: FORMULA '=$K$38' => 248
+K76: FORMULA '=$K$38' => 272
+E77: FORMULA '= 50*D76' => 150
+F77: 'em qualquer defesa;'
 H77: 'TECNOLOGIA '
+E78: FORMULA '= 20*D76' => 60
+F78: 'no final do dano'
 H78: 'CONDUÇÃO'
-I78: FORMULA '=J78+K78+L78' => 384
+I78: FORMULA '=J78+K78+L78' => 408
 J78: FORMULA '=FICHA!N78' => 136
-K78: FORMULA '=C16' => 248
+K78: FORMULA '=C16' => 272
 B79: 'Golpe Devastador de Lugan'
-D79: 1.0
-E79: '3d×100 no ataque;\n2d×100 no multiplicador de dano.'
+D79: 3.0
+E79: '4d×100 no ataque;\n3d×100 no multiplicador de dano.'
 H79: 'PILOTAGEM'
-I79: FORMULA '=J79+K79+L79' => 384
+I79: FORMULA '=J79+K79+L79' => 408
 J79: FORMULA '=FICHA!N79' => 136
-K79: FORMULA '=$K$78' => 248
+K79: FORMULA '=$K$78' => 272
 H80: 'VELEJAR'
-I80: FORMULA '=J80+K80+L80' => 384
+I80: FORMULA '=J80+K80+L80' => 408
 J80: FORMULA '=FICHA!N80' => 136
-K80: FORMULA '=$K$78' => 248
+K80: FORMULA '=$K$78' => 272
 H81: 'ENGENHARIA '
-I81: FORMULA '=J81+K81+L81' => 277
+I81: FORMULA '=J81+K81+L81' => 301
 J81: FORMULA '=FICHA!N81' => 136
-K81: FORMULA '=C20' => 141
-B82: '[Golpe Especial]\nCompetencia\n(Campeão das Nações)'
-D82: 1.0
-E82: '10 Fadiga: escolha 1 efeito:'
+K81: FORMULA '=C20' => 165
+B82: 'Portador da Jikar'
+E82: '[+1d] dano; +3d×100 ataque/defesa.\nInimigos só fazem 1 ataque contra você.\nAliados 3 km: divinos +250; não divinos +100.\nIgnora mentira, ilusão e invisibilidade.\nContra grupo, só metade pode te atacar. Jikar retorna à vontade.'
 H82: 'MECÂNICA '
-I82: FORMULA '=J82+K82+L82' => 384
+I82: FORMULA '=J82+K82+L82' => 408
 J82: FORMULA '=FICHA!N82' => 136
-K82: FORMULA '=$K$78' => 248
-E83: '1 - Multiataque — atinge alvos = Agilidade.'
+K82: FORMULA '=$K$78' => 272
 H83: 'COMBATE'
-E84: '2 - Ataque acelerado — dobra a Agilidade no ataque.'
 H84: 'LUTA'
-I84: FORMULA '=J84+K84+L84' => 384
+I84: FORMULA '=J84+K84+L84' => 408
 J84: FORMULA '=FICHA!N84' => 136
-K84: FORMULA '=$K$78' => 248
-E85: '3 - Dano acelerado — soma Agilidade no dano'
+K84: FORMULA '=$K$78' => 272
 H85: 'MANIPULAR TSU'
-I85: FORMULA '=J85+K85+L85' => 477
+I85: FORMULA '=J85+K85+L85' => 501
 J85: FORMULA '=FICHA!N85' => 336
-K85: FORMULA '=C20' => 141
-E86: '25 Fadiga: usa os 3 efeitos na mesma rodada.'
+K85: FORMULA '=C20' => 165
 H86: 'ESPADA'
-I86: FORMULA '=J86+K86+L86' => 584
+I86: FORMULA '=J86+K86+L86' => 608
 J86: FORMULA '=FICHA!N86' => 336
-K86: FORMULA '=$K$78' => 248
+K86: FORMULA '=$K$78' => 272
+B87: 'Campeão do combate divino        '
+D87: 3.0
+E87: 'escolha a linha de arma da vida dele: Espada / Katana / Jikar;\n+140 nas rolagens de ataque usando essa arma;\n+140 nas rolagens de defesa usando essa arma;\n+40 no dano físico com essa arma;\npressão de ataque em 4 km².'
 H87: 'ARMA DE FOGO'
-I87: FORMULA '=J87+K87+L87' => 384
+I87: FORMULA '=J87+K87+L87' => 408
 J87: FORMULA '=FICHA!N89' => 136
-K87: FORMULA '=$K$78' => 248
+K87: FORMULA '=$K$78' => 272
 H88: 'ESCUDO'
-I88: FORMULA '=J88+K88+L88' => 584
+I88: FORMULA '=J88+K88+L88' => 608
 J88: FORMULA '=FICHA!N94' => 336
-K88: FORMULA '=$K$78' => 248
+K88: FORMULA '=$K$78' => 272
 I90: 'NÍVEL'
 J90: 'REAL'
+K90: 70.0
 H91: 'FOGO'
-I91: 6.0
+I91: 48.0
+J91: FORMULA '=I91*8' => 384
 H92: 'ÁGUA '
 I92: 6.0
+B93: 'Força das montadas Divinas'
+D93: 1.0
+E93: '[+60] Força permanente;\nataques que usam Força afetam 2 km²;\ncausar terremoto em linha de 500 m por 4 km²;\nquem estiver no caminho testa Esquiva contra o ataque do Lugan;\nquem falhar sofre o dano.'
 H93: 'AR '
 I93: 6.0
 H94: 'TERRA'
-I94: 6.0
-J94: FORMULA '=I94*8' => 48
+I94: 48.0
+J94: FORMULA '=I94*8' => 384
 H95: 'LUZ '
 I95: 6.0
 H96: 'TREVAS'
 I96: 6.0
+B98: 'Proteção Divina'
+D98: 1.0
+E98: '1 rodada por dia de imunidade total a dano, divino ou não;\n+500 PV extras;\nproteção de área em 5 km²;\nabsorve 200 de dano no cenário e em todos os envolvidos naquele ataque;\npode escolher até 100 criaturas por dia para proteger;\nessas criaturas recebem 2 barras de CD e +15 em ataque, defesa e perícias;\nbônus de +150 para anular efeitos mentais divinos.'
+B106: 'O filho de Hagashi'
+D106: 4.0
+E106: 'protege Hagashi contra dano em área de 100 km do reino;\nreduz 350 de dano por ponto, então 1.400 de proteção territorial;\nvincula 32.000 hagashianos fiéis;\nesses fiéis recebem proteção contra dano em área;\nfiéis ganham +48 em ataque e defesa quando Alexander desejar;\nesse bônus dura 8 horas e pode ser usado 1 vez a cada 24h;\nAlexander ganha +1 em ataque e defesa para cada 200 fiéis hagashianos;\no dano dele aumenta +1 para cada 400 fiéis;\na morte desses fiéis diminui esse poder.'
+B115: 'Lugan Completo'
+D115: 1.0
+E115: 'voo de 280 km/h;\naltura máxima de voo de 3.000 m;\n+60 em qualquer ataque;\n+60 em qualquer defesa;\n+20 no dano;\npressão de ataque em 1 km ao redor;\nbônus de +200 para anular efeitos mentais divinos;\ncomunicação com Kitaicos;\nseguidores fiéis: 1d × 1.000.'
+B124: 'Manipulador de tsu Real'
+D124: 1.0
+E124: 'sua perícia vira Manipular Tsu Real;\nrecebe +70 em Manipular Tsu Real;\ndanos mágicos recebem +10;\npode conjurar uma magia simultânea em 3 locais de Kitai;\nse a magia for em alvo, pode atingir 50 alvos simultâneos;\npode dar +30 em def para companheiros Lugans.(nao ataca)'
+B130: 'Fogo Real'
+D130: 2.0
+E130: 'Manipula fogo real em 2 km². Causa 400 dano/rodada.\nContra divinos: ataques diretos recebem +200 dano.\nAlvos de água sofrem ×1,5 dano.\nNão divinos são incinerados ou testam Esquiva para sofrer 1/4.'
 
-########## SHEET FICHA
+########## SHEET 'FICHA' dims=A1:Z295 images=2
 R6: 'CD OU PV EXTRAS'
 B7: 'NOME: '
 G7: 'CLASSE INICIAL'
