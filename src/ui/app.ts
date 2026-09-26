@@ -1,161 +1,213 @@
-// Interface principal: cabeçalho, painel de sessão, abas e rolador de dados.
+// Esqueleto da interface: topo com visão rápida, alertas, painel de sessão, abas e rodapé.
+// Regra de ouro: digitar em um campo só recalcula os textos derivados (funções registradas com
+// `ligar`); os campos nunca são recriados durante a digitação, então o foco não se perde.
 import {
-  combate, dadosPorNivel, novaSessao, pontosRestantes, pv, rolar, totalAtributo, totalPericia, tsuReal,
+  alertaBonusNivel, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, pvTotal,
 } from '../engine';
-import type { AtributoId, ChaveCombate, Ficha, GrupoPericia, Poder, Sessao } from '../model/types';
-import { h, inteiro, limpar } from './dom';
+import type { Ficha, Poder } from '../model/types';
+import { abaAtributos } from './abas/atributos';
+import { abaCombate } from './abas/combate';
+import { abaIdentidade } from './abas/identidade';
+import { abaPericias } from './abas/pericias';
+import { abaPoderes } from './abas/poderes';
+import { abaResumo } from './abas/resumo';
+import { abaTsu } from './abas/tsu';
+import { ATRIBUTOS, ROTULO_ATRIBUTO, rolagem } from './componentes';
+import type { Contexto } from './contexto';
+import { campo, definirTexto, definirValor, entradaNumero, h, inteiro, limpar } from './dom';
+import { carregar, fichaPadrao, salvar } from './estado';
 import { gerarJson, lerJson, lerXlsx } from './importacao';
-import { LIMITE_HISTORICO, carregar, salvar } from './estado';
 
-const ROTULO_ATRIBUTO: Record<AtributoId, string> = {
-  forca: 'Força', agilidade: 'Agilidade', reflexos: 'Reflexos',
-  fortitude: 'Fortitude', distancia: 'Distância', mental: 'Mental',
-};
-
-const ROTULO_GRUPO: Record<GrupoPericia, string> = {
-  artes: 'Artes', ciencias: 'Ciências', crime: 'Crime', esporte: 'Esporte', idioma: 'Idioma',
-  investigacao: 'Investigação', manipulacao: 'Manipulação', sobrevivencia: 'Sobrevivência',
-  tecnologia: 'Tecnologia', combate: 'Combate',
-};
-
-const ROTULO_COMBATE: Record<ChaveCombate, string> = {
-  ataqueArmaBranca: 'Ataque com arma branca', ataqueMagico: 'Ataque mágico',
-  ataqueLuta: 'Ataque de luta', ataqueArmaFogo: 'Ataque com arma de fogo',
-  esquivar: 'Esquivar', bloquear: 'Bloquear', aparar: 'Aparar',
-};
-
-const ROTULO_ELEMENTO: Record<string, string> = {
-  fogo: 'Fogo', agua: 'Água', ar: 'Ar', terra: 'Terra', luz: 'Luz', trevas: 'Trevas',
-};
-
-const ABAS = ['Atributos', 'Perícias', 'Combate', 'Poderes', 'Tsu'] as const;
+const ABAS = ['Resumo de Combate', 'Identidade', 'Atributos', 'Perícias', 'Combate', 'Poderes', 'Tsu'] as const;
 type Aba = (typeof ABAS)[number];
-
-// Fadiga de referência da barra: soma dos três efeitos do Golpe Especial.
-const ESCALA_FADIGA = 25;
 
 export function iniciar(raiz: HTMLElement): void {
   let { ficha, sessao } = carregar();
-  let abaAtiva: Aba = 'Atributos';
-  let busca = '';
-  let mensagem = '';
+  let abaAtiva: Aba = 'Resumo de Combate';
+  let ligacoesAba: (() => void)[] = [];
+  const ligacoesGlobais: (() => void)[] = [];
+  const busca = { termo: '' };
+  const composicoesAbertas = new Set<string>();
 
   const cabecalho = h('header', { class: 'cabecalho' });
+  const alertas = h('section', { class: 'alertas', 'aria-label': 'Alertas da ficha' });
   const painel = h('section', { class: 'painel-sessao', 'aria-label': 'Painel de sessão' });
   const navegacao = h('div', { class: 'abas', role: 'tablist', 'aria-label': 'Seções da ficha' });
   const conteudo = h('main', { class: 'conteudo', id: 'conteudo' });
-  const rolador = h('section', { class: 'cartao rolador', 'aria-label': 'Rolador de dados' });
   const rodape = h('footer', { class: 'rodape' });
   const aviso = h('p', { class: 'aviso', role: 'status', 'aria-live': 'polite' });
-
-  raiz.append(cabecalho, painel, navegacao, conteudo, rolador, rodape, aviso);
+  raiz.append(cabecalho, alertas, painel, navegacao, conteudo, rodape, aviso);
 
   const persistir = (): void => salvar(ficha, sessao);
+  const avisar = (texto: string): void => definirTexto(aviso, texto);
 
-  function avisar(texto: string): void {
-    mensagem = texto;
-    aviso.textContent = mensagem;
+  function atualizarTudo(): void {
+    for (const fn of ligacoesGlobais) fn();
+    for (const fn of ligacoesAba) fn();
   }
 
-  function limitarPv(valor: number): number {
-    return Math.max(0, Math.min(valor, pv(ficha)));
-  }
+  const ctx: Contexto = {
+    ficha: () => ficha,
+    sessao: () => sessao,
+    mudou: () => { persistir(); atualizarTudo(); },
+    ligar: (fn) => { fn(); ligacoesAba.push(fn); },
+    reconstruir: () => renderConteudo(),
+    trocarFicha: (nova, reiniciarSessao = false) => {
+      ficha = nova;
+      if (reiniciarSessao) sessao = novaSessao(ficha);
+      persistir();
+      renderConteudo();
+      atualizarTudo();
+    },
+    avisar,
+    composicoesAbertas,
+  };
 
-  // ---------- Cabeçalho ----------
-  function renderCabecalho(): void {
-    limpar(cabecalho);
-    const id = ficha.identidade;
+  const limitarPv = (valor: number): number => Math.max(0, Math.min(valor, pvTotal(ficha)));
+
+  // ---------- Topo: visão rápida ----------
+  function montarCabecalho(): void {
     const base = import.meta.env.BASE_URL;
+    const tile = (rotulo: string, texto: () => string, classe = ''): HTMLElement => {
+      const valor = h('strong', {});
+      ligacoesGlobais.push(() => definirTexto(valor, texto()));
+      return h('div', { class: `tile ${classe}`.trim() }, h('span', { class: 'rotulo' }, rotulo), valor);
+    };
+    const titulo = h('h1', {});
+    const sub = h('p', { class: 'sub' });
+    ligacoesGlobais.push(() => {
+      definirTexto(titulo, ficha.identidade.nome || 'Sem nome');
+      definirTexto(sub, [ficha.identidade.raca, ficha.identidade.reino && `Reino ${ficha.identidade.reino}`, ficha.identidade.jogador && `Jogador: ${ficha.identidade.jogador}`]
+        .filter(Boolean).join(' · '));
+    });
+    const ataque = (): string => { const c = combate(ficha, 'ataqueArmaBranca'); return rolagem(c.dados, c.total); };
     cabecalho.append(
-      h('img', { class: 'retrato', src: `${base}assets/retrato.png`, alt: `Retrato de ${id.nome}`, width: 88, height: 88 }),
-      h('div', { class: 'identidade' },
-        h('h1', {}, id.nome),
-        h('p', { class: 'sub' }, `${id.raca} · Reino ${id.reino}`),
-        h('p', { class: 'sub' }, `Pilar: ${id.pilarLuganico}`),
-        h('p', { class: 'niveis' },
-          h('span', { class: 'selo' }, `Nível ${id.nivel}`),
-          h('span', { class: 'selo' }, `Lugânico ${id.nivelLuganico}`),
-        ),
-      ),
+      h('div', { class: 'cabecalho-topo' },
+        h('img', { class: 'retrato', src: `${base}assets/retrato.png`, alt: 'Retrato do personagem', width: 88, height: 88 }),
+        h('div', { class: 'identidade' }, titulo, sub)),
+      h('div', { class: 'visao', role: 'group', 'aria-label': 'Visão rápida' },
+        tile('Nível', () => String(ficha.identidade.nivel)),
+        tile('Lugânico', () => String(ficha.identidade.nivelLuganico)),
+        tile('Pilar', () => ficha.identidade.pilarLuganico || '—'),
+        tile('PV', () => `${sessao.pvAtual} / ${pvTotal(ficha)}`),
+        tile('Rolagem', () => `${dadosPorNivel(ficha.identidade.nivel)}d×100`),
+        tile('Arma principal', () => ficha.identidade.armaPrincipal || '—'),
+        tile('Ataque principal', ataque, 'largo'),
+        tile('Dano principal', () => dano(ficha).texto, 'largo')),
     );
   }
 
+  // ---------- Alertas ----------
+  function desenharAlertas(): void {
+    limpar(alertas);
+    const bonus = alertaBonusNivel(ficha);
+    if (bonus) {
+      const esperado = bonusNivelEsperado(ficha);
+      alertas.append(h('div', { class: 'alerta-caixa', role: 'alert' },
+        h('p', {}, bonus),
+        h('button', {
+          type: 'button', class: 'destaque',
+          onclick: () => {
+            for (const id of ATRIBUTOS) ficha.atributos[id].bonusNivel = esperado;
+            ctx.trocarFicha(ficha);
+            avisar(`Bônus de nível corrigido para ${esperado} em todos os atributos.`);
+          },
+        }, `Corrigir para ${esperado}`)));
+    }
+    const d = diferencaAtributos(ficha);
+    if (d.excedeu) {
+      alertas.append(h('div', { class: 'alerta-caixa', role: 'alert' },
+        h('p', {}, `A diferença entre o maior (${ROTULO_ATRIBUTO[d.maior]}) e o menor (${ROTULO_ATRIBUTO[d.menor]}) atributo é ${d.diferencia}, acima do limite de ${d.limite}.`)));
+    }
+  }
+  ligacoesGlobais.push(desenharAlertas);
+
   // ---------- Painel de sessão ----------
-  function renderPainel(): void {
-    limpar(painel);
-    const pvMax = pv(ficha);
-    const pctPv = pvMax > 0 ? Math.max(0, Math.min(100, (sessao.pvAtual / pvMax) * 100)) : 0;
-    const escala = Math.max(ESCALA_FADIGA, sessao.fadiga);
-    const pctFadiga = Math.min(100, (sessao.fadiga / escala) * 100);
+  const listaUsos = h('ul', { class: 'usos' });
+  const blocoUsos = h('div', { class: 'bloco largo' }, h('span', { class: 'rotulo' }, 'Usos por dia'), listaUsos);
 
-    const campoValor = h('input', {
-      type: 'number', min: 0, value: 10, id: 'valor-pv', inputmode: 'numeric',
-      'aria-label': 'Valor de dano ou cura',
-    });
+  const ehUsavel = (p: Poder): boolean =>
+    p.tipo !== 'removido' && (p.usosPorDia !== undefined || p.custoFadiga !== undefined);
+
+  function desenharUsos(): void {
+    const focado = document.activeElement?.getAttribute('data-uso');
+    limpar(listaUsos);
+    const usaveis = ficha.poderes.filter(ehUsavel);
+    blocoUsos.hidden = usaveis.length === 0;
+    for (const p of usaveis) {
+      const usos = sessao.usosPoder[p.id] ?? 0;
+      const esgotado = p.usosPorDia !== undefined && usos >= p.usosPorDia;
+      const custo = p.custoFadiga ?? 0;
+      listaUsos.append(h('li', {},
+        h('span', { class: 'nome-uso' }, p.nome || 'Sem nome'),
+        h('span', { class: 'detalhe' },
+          `${usos}${p.usosPorDia !== undefined ? ` / ${p.usosPorDia}` : ''} usos`,
+          custo > 0 ? ` · custo ${custo} de fadiga` : ''),
+        h('button', {
+          type: 'button', disabled: esgotado, 'data-uso': p.id, 'aria-label': `Usar ${p.nome || 'poder'}`,
+          onclick: () => {
+            sessao.usosPoder[p.id] = (sessao.usosPoder[p.id] ?? 0) + 1;
+            sessao.fadiga += p.custoFadiga ?? 0;
+            persistir();
+            atualizarTudo();
+            avisar(`${p.nome} usado.`);
+          },
+        }, 'Usar')));
+    }
+    if (focado) listaUsos.querySelector<HTMLElement>(`[data-uso="${CSS.escape(focado)}"]:not(:disabled)`)?.focus();
+  }
+
+  function montarPainel(): void {
+    const valorPv = entradaNumero(10, () => {}, { min: 0 });
+    const campoPv = entradaNumero(sessao.pvAtual, (v) => {
+      sessao.pvAtual = limitarPv(v ?? 0);
+      persistir();
+      atualizarTudo();
+    }, { min: 0 });
+    campoPv.addEventListener('change', () => definirValor(campoPv, String(sessao.pvAtual)));
     const aplicar = (sinal: 1 | -1): void => {
-      const v = Math.max(0, inteiro(campoValor.value, 0));
-      sessao.pvAtual = limitarPv(sessao.pvAtual + sinal * v);
+      sessao.pvAtual = limitarPv(sessao.pvAtual + sinal * Math.max(0, inteiro(valorPv.value, 0)));
       persistir();
-      renderPainel();
+      atualizarTudo();
     };
-    const campoPv = h('input', {
-      type: 'number', value: sessao.pvAtual, id: 'pv-atual', inputmode: 'numeric',
-      'aria-label': 'PV atual',
-      onchange: (e: Event) => {
-        sessao.pvAtual = limitarPv(inteiro((e.target as HTMLInputElement).value, sessao.pvAtual));
-        persistir();
-        renderPainel();
-      },
+    const total = h('span', {});
+    const preenchimento = h('div', { class: 'preenchimento' });
+    const barra = h('div', { class: 'barra pv', role: 'progressbar', 'aria-label': 'Pontos de vida', 'aria-valuemin': 0 }, preenchimento);
+    ligacoesGlobais.push(() => {
+      const max = pvTotal(ficha);
+      definirValor(campoPv, String(sessao.pvAtual));
+      definirTexto(total, ` / ${max}`);
+      preenchimento.style.width = `${max > 0 ? Math.max(0, Math.min(100, (sessao.pvAtual / max) * 100)) : 0}%`;
+      barra.setAttribute('aria-valuemax', String(max));
+      barra.setAttribute('aria-valuenow', String(sessao.pvAtual));
     });
 
-    const passoFadiga = h('input', {
-      type: 'number', min: 1, value: 5, id: 'passo-fadiga', inputmode: 'numeric',
-      'aria-label': 'Quantidade de fadiga',
-    });
+    const campoFadiga = entradaNumero(sessao.fadiga, (v) => { sessao.fadiga = Math.max(0, v ?? 0); persistir(); atualizarTudo(); }, { min: 0 });
+    campoFadiga.addEventListener('change', () => definirValor(campoFadiga, String(sessao.fadiga)));
+    ligacoesGlobais.push(() => definirValor(campoFadiga, String(sessao.fadiga)));
+    const passoFadiga = entradaNumero(5, () => {}, { min: 1 });
     const mudarFadiga = (sinal: 1 | -1): void => {
-      const v = Math.max(0, inteiro(passoFadiga.value, 0));
-      sessao.fadiga = Math.max(0, sessao.fadiga + sinal * v);
+      sessao.fadiga = Math.max(0, sessao.fadiga + sinal * Math.max(0, inteiro(passoFadiga.value, 0)));
       persistir();
-      renderPainel();
+      atualizarTudo();
     };
-
-    const poderesUsaveis = ficha.poderes.filter((p) => p.custoFadiga !== undefined || p.usosPorDia !== undefined);
+    ligacoesGlobais.push(desenharUsos);
 
     painel.append(
       h('div', { class: 'bloco' },
-        h('div', { class: 'linha-titulo' },
-          h('label', { for: 'pv-atual' }, 'PV'),
-          h('span', { class: 'numeros' }, campoPv, ` / ${pvMax}`),
-        ),
-        h('div', { class: 'barra pv', role: 'progressbar', 'aria-label': 'Pontos de vida',
-          'aria-valuemin': 0, 'aria-valuemax': pvMax, 'aria-valuenow': sessao.pvAtual },
-          h('div', { class: 'preenchimento', style: `width:${pctPv}%` })),
+        h('div', { class: 'linha-titulo' }, h('span', { class: 'rotulo' }, 'PV atual'), h('span', { class: 'numeros' }, campo('PV atual', campoPv, true), total)),
+        barra,
         h('div', { class: 'controles' },
           h('button', { type: 'button', class: 'perigo', onclick: () => aplicar(-1) }, 'Dano'),
-          h('label', { class: 'oculto', for: 'valor-pv' }, 'Valor'),
-          campoValor,
-          h('button', { type: 'button', class: 'cura', onclick: () => aplicar(1) }, 'Cura'),
-        ),
-      ),
+          campo('Valor de dano ou cura', valorPv, true),
+          h('button', { type: 'button', class: 'cura', onclick: () => aplicar(1) }, 'Cura'))),
       h('div', { class: 'bloco' },
-        h('div', { class: 'linha-titulo' },
-          h('span', { class: 'rotulo' }, 'Fadiga'),
-          h('span', { class: 'numeros' }, String(sessao.fadiga)),
-        ),
-        h('div', { class: 'barra fadiga', role: 'progressbar', 'aria-label': 'Fadiga',
-          'aria-valuemin': 0, 'aria-valuemax': escala, 'aria-valuenow': sessao.fadiga },
-          h('div', { class: 'preenchimento', style: `width:${pctFadiga}%` })),
+        h('div', { class: 'linha-titulo' }, h('span', { class: 'rotulo' }, 'Fadiga'), h('span', { class: 'numeros' }, campo('Fadiga', campoFadiga, true))),
         h('div', { class: 'controles' },
           h('button', { type: 'button', onclick: () => mudarFadiga(1) }, 'Gastar'),
-          h('label', { class: 'oculto', for: 'passo-fadiga' }, 'Quantidade'),
-          passoFadiga,
-          h('button', { type: 'button', onclick: () => mudarFadiga(-1) }, 'Recuperar'),
-        ),
-      ),
-      ...(poderesUsaveis.length > 0 ? [h('div', { class: 'bloco largo' },
-          h('span', { class: 'rotulo' }, 'Usos por dia'),
-          h('ul', { class: 'usos' }, ...poderesUsaveis.map(renderUso)),
-        )] : []),
+          campo('Quantidade de fadiga', passoFadiga, true),
+          h('button', { type: 'button', onclick: () => mudarFadiga(-1) }, 'Recuperar'))),
+      blocoUsos,
       h('div', { class: 'bloco acoes' },
         h('button', {
           type: 'button', class: 'destaque',
@@ -163,39 +215,11 @@ export function iniciar(raiz: HTMLElement): void {
             sessao.fadiga = 0;
             sessao.usosPoder = {};
             persistir();
-            renderPainel();
-            renderConteudo();
-            avisar('Descanso concluído: fadiga e usos zerados.');
+            atualizarTudo();
+            avisar('Descanso concluído: fadiga e usos por dia zerados.');
           },
-        }, 'Descansar'),
-      ),
+        }, 'Descansar')),
     );
-  }
-
-  function renderUso(p: Poder): HTMLElement {
-    const usos = sessao.usosPoder[p.id] ?? 0;
-    const esgotado = p.usosPorDia !== undefined && usos >= p.usosPorDia;
-    const custo = p.custoFadiga ?? 0;
-    return h('li', {},
-      h('span', { class: 'nome-uso' }, p.nome),
-      h('span', { class: 'detalhe' },
-        `${usos}${p.usosPorDia !== undefined ? ` / ${p.usosPorDia}` : ''} usos`,
-        custo > 0 ? ` · custo ${custo} de fadiga` : ''),
-      h('button', {
-        type: 'button', disabled: esgotado,
-        'aria-label': `Usar ${p.nome}`,
-        onclick: () => usarPoder(p),
-      }, 'Usar'),
-    );
-  }
-
-  function usarPoder(p: Poder): void {
-    sessao.usosPoder[p.id] = (sessao.usosPoder[p.id] ?? 0) + 1;
-    sessao.fadiga += p.custoFadiga ?? 0;
-    persistir();
-    renderPainel();
-    renderConteudo();
-    avisar(`${p.nome} usado.`);
   }
 
   // ---------- Abas ----------
@@ -204,7 +228,7 @@ export function iniciar(raiz: HTMLElement): void {
     ABAS.forEach((nome, i) => {
       const ativa = nome === abaAtiva;
       navegacao.append(h('button', {
-        type: 'button', role: 'tab', id: `aba-${i}`, 'aria-selected': ativa,
+        type: 'button', role: 'tab', id: `aba-${i}`, 'aria-selected': String(ativa),
         'aria-controls': 'conteudo', tabindex: ativa ? 0 : -1, class: ativa ? 'aba ativa' : 'aba',
         onclick: () => selecionar(nome),
         onkeydown: (e: Event) => {
@@ -226,216 +250,73 @@ export function iniciar(raiz: HTMLElement): void {
 
   function renderConteudo(): void {
     limpar(conteudo);
+    ligacoesAba = [];
     conteudo.setAttribute('role', 'tabpanel');
     conteudo.setAttribute('aria-labelledby', `aba-${ABAS.indexOf(abaAtiva)}`);
-    if (abaAtiva === 'Atributos') conteudo.append(secaoAtributos());
-    else if (abaAtiva === 'Perícias') conteudo.append(secaoPericias());
-    else if (abaAtiva === 'Combate') conteudo.append(secaoCombate());
-    else if (abaAtiva === 'Poderes') conteudo.append(secaoPoderes());
-    else conteudo.append(secaoTsu());
-  }
-
-  function secaoAtributos(): HTMLElement {
-    const restantes = pontosRestantes(ficha);
-    return h('div', {},
-      h('p', { class: `resumo${restantes !== 0 ? ' alerta' : ''}` },
-        `Pontos restantes: ${restantes} (de ${ficha.pontosIniciais})`),
-      h('div', { class: 'grade' },
-        ...(Object.keys(ROTULO_ATRIBUTO) as AtributoId[]).map((id) => {
-          const a = ficha.atributos[id];
-          return h('article', { class: 'cartao atributo' },
-            h('h3', {}, ROTULO_ATRIBUTO[id]),
-            h('p', { class: 'valor' }, String(totalAtributo(a))),
-            h('p', { class: 'detalhe' }, `bônus ${a.bonus} + pontos ${a.pontos} + extra ${a.bonusExtra}`),
-          );
-        })),
-    );
-  }
-
-  function secaoPericias(): HTMLElement {
-    const lista = h('div', { class: 'grupos' });
-    const desenhar = (): void => {
-      limpar(lista);
-      const termo = busca.trim().toLocaleLowerCase('pt-BR');
-      let achou = false;
-      for (const grupo of Object.keys(ROTULO_GRUPO) as GrupoPericia[]) {
-        const itens = ficha.pericias.filter((p) =>
-          p.grupo === grupo && p.nome.toLocaleLowerCase('pt-BR').includes(termo));
-        if (itens.length === 0) continue;
-        achou = true;
-        lista.append(h('section', { class: 'cartao grupo' },
-          h('h3', {}, ROTULO_GRUPO[grupo]),
-          h('ul', { class: 'pericias' }, ...itens.map((p) =>
-            h('li', {},
-              h('span', {}, p.nome),
-              h('span', { class: 'detalhe' }, ROTULO_ATRIBUTO[p.atributo]),
-              h('strong', {}, String(totalPericia(ficha, p.id))),
-            ))),
-        ));
-      }
-      if (!achou) lista.append(h('p', { class: 'vazio' }, 'Nenhuma perícia encontrada.'));
+    const construtores: Record<Aba, () => HTMLElement> = {
+      'Resumo de Combate': () => abaResumo(ctx),
+      Identidade: () => abaIdentidade(ctx),
+      Atributos: () => abaAtributos(ctx),
+      Perícias: () => abaPericias(ctx, busca),
+      Combate: () => abaCombate(ctx),
+      Poderes: () => abaPoderes(ctx),
+      Tsu: () => abaTsu(ctx),
     };
-    const campo = h('input', {
-      type: 'search', id: 'busca-pericia', value: busca, placeholder: 'Buscar perícia por nome',
-      autocomplete: 'off',
-      oninput: (e: Event) => { busca = (e.target as HTMLInputElement).value; desenhar(); },
-    });
-    desenhar();
-    return h('div', {},
-      h('label', { class: 'oculto', for: 'busca-pericia' }, 'Buscar perícia por nome'),
-      campo, lista);
+    conteudo.append(construtores[abaAtiva]());
   }
 
-  function secaoCombate(): HTMLElement {
-    const valores = combate(ficha);
-    return h('div', { class: 'grade' },
-      ...(Object.keys(ROTULO_COMBATE) as ChaveCombate[]).map((k) =>
-        h('article', { class: 'cartao atributo' },
-          h('h3', {}, ROTULO_COMBATE[k]),
-          h('p', { class: 'valor' }, String(valores[k])),
-          h('p', { class: 'detalhe' }, `bônus passivo ${ficha.combate.bonusPassivo[k]}`),
-        )));
-  }
+  // ---------- Rodapé: exportar, importar e restaurar ----------
+  function montarRodape(): void {
+    const arquivoJson = h('input', { type: 'file', accept: 'application/json,.json', class: 'oculto', id: 'f-json', tabindex: -1, 'aria-label': 'Arquivo JSON da ficha' });
+    const arquivoXlsx = h('input', { type: 'file', accept: '.xlsx', class: 'oculto', id: 'f-xlsx', tabindex: -1, 'aria-label': 'Arquivo xlsx da planilha' });
 
-  function secaoPoderes(): HTMLElement {
-    return h('div', { class: 'lista-poderes' },
-      ...ficha.poderes.map((p) =>
-        h('article', { class: 'cartao' },
-          h('h3', {}, p.nome),
-          h('p', { class: 'detalhe' },
-            `Nível ${p.nivel}`,
-            p.custoFadiga ? ` · custo ${p.custoFadiga} de fadiga` : '',
-            p.usosPorDia ? ` · ${p.usosPorDia} usos por dia` : ''),
-          h('p', {}, p.descricao),
-        )));
-  }
-
-  function secaoTsu(): HTMLElement {
-    return h('div', { class: 'grade' },
-      ...ficha.tsu.map((t) =>
-        h('article', { class: 'cartao atributo' },
-          h('h3', {}, ROTULO_ELEMENTO[t.elemento] ?? t.elemento),
-          h('p', { class: 'valor' }, String(tsuReal(t))),
-          h('p', { class: 'detalhe' }, t.real ? `real (nível ${t.nivel} × 8)` : `nível ${t.nivel}`),
-        )));
-  }
-
-  // ---------- Rolador ----------
-  function renderRolador(): void {
-    limpar(rolador);
-    const qtd = h('input', { type: 'number', min: 1, id: 'r-qtd', value: dadosPorNivel(ficha.identidade.nivel), inputmode: 'numeric' });
-    const mult = h('input', { type: 'number', min: 1, id: 'r-mult', value: 100, inputmode: 'numeric' });
-    const bonus = h('input', { type: 'number', id: 'r-bonus', value: 0, inputmode: 'numeric' });
-    const rotulo = h('input', { type: 'text', id: 'r-rotulo', placeholder: 'Rótulo (opcional)' });
-    const ultima = h('p', { class: 'ultima', 'aria-live': 'polite' });
-    const historico = h('ol', { class: 'historico', 'aria-label': 'Histórico de rolagens' });
-
-    const descrever = (r: Sessao['rolagens'][number]): string =>
-      `${r.rotulo ? `${r.rotulo}: ` : ''}[${r.dados.join(', ')}] × ${r.multiplicador}`
-      + `${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''} = ${r.total}`;
-
-    const desenharHistorico = (): void => {
-      limpar(historico);
-      for (const r of sessao.rolagens) {
-        historico.append(h('li', {}, h('span', { class: 'detalhe' }, r.quando), ` ${descrever(r)}`));
-      }
-    };
-
-    const executar = (): void => {
-      const n = Math.max(1, inteiro(qtd.value, 1));
-      const r = rolar(n, Math.max(1, inteiro(mult.value, 100)), inteiro(bonus.value, 0), rotulo.value.trim());
-      r.quando = new Date().toLocaleTimeString('pt-BR');
-      sessao.rolagens = [r, ...sessao.rolagens].slice(0, LIMITE_HISTORICO);
-      persistir();
-      ultima.textContent = `Total ${r.total} — dados: ${r.dados.join(', ')}`;
-      desenharHistorico();
-    };
-
-    desenharHistorico();
-    rolador.append(
-      h('h2', {}, 'Rolador de dados'),
-      h('div', { class: 'campos' },
-        h('label', { for: 'r-qtd' }, 'Dados', qtd),
-        h('label', { for: 'r-mult' }, 'Multiplicador', mult),
-        h('label', { for: 'r-bonus' }, 'Bônus', bonus),
-        h('label', { for: 'r-rotulo' }, 'Rótulo', rotulo),
-      ),
-      h('button', { type: 'button', class: 'destaque', onclick: executar }, 'Rolar'),
-      ultima,
-      h('h3', {}, `Últimas ${LIMITE_HISTORICO} rolagens`),
-      historico,
-    );
-  }
-
-  // ---------- Rodapé: exportar e importar ----------
-  function aplicarFicha(nova: Ficha): void {
-    ficha = nova;
-    sessao = novaSessao(ficha);
-    persistir();
-    renderTudo();
-  }
-
-  function renderRodape(): void {
-    limpar(rodape);
-    const arquivoJson = h('input', { type: 'file', accept: 'application/json,.json', class: 'oculto', id: 'f-json' });
-    const arquivoXlsx = h('input', { type: 'file', accept: '.xlsx', class: 'oculto', id: 'f-xlsx' });
-
-    arquivoJson.addEventListener('change', async () => {
-      const arq = arquivoJson.files?.[0];
+    const importar = async (entrada: HTMLInputElement, ler: (arq: File) => Promise<Ficha>, sucesso: string, falha: string): Promise<void> => {
+      const arq = entrada.files?.[0];
       if (!arq) return;
       try {
-        aplicarFicha(lerJson(await arq.text()));
-        avisar('JSON importado.');
+        ctx.trocarFicha(await ler(arq), true);
+        avisar(sucesso);
       } catch (erro) {
-        avisar(`Falha ao importar o JSON: ${(erro as Error).message}`);
+        avisar(`${falha}: ${(erro as Error).message}`);
       }
-      arquivoJson.value = '';
-    });
-    arquivoXlsx.addEventListener('change', async () => {
-      const arq = arquivoXlsx.files?.[0];
-      if (!arq) return;
+      entrada.value = '';
+    };
+    arquivoJson.addEventListener('change', () => importar(arquivoJson, async (a) => lerJson(await a.text()), 'JSON importado.', 'Falha ao importar o JSON'));
+    arquivoXlsx.addEventListener('change', () => importar(arquivoXlsx, async (a) => lerXlsx(await a.arrayBuffer()), 'Planilha importada.', 'Falha ao importar a planilha'));
+
+    const exportar = (): void => {
       try {
-        aplicarFicha(lerXlsx(await arq.arrayBuffer()));
-        avisar('Planilha importada.');
+        const url = URL.createObjectURL(new Blob([gerarJson(ficha)], { type: 'application/json' }));
+        const a = h('a', { href: url, download: 'ficha-kitai.json' });
+        document.body.append(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        avisar('JSON exportado.');
       } catch (erro) {
-        avisar(`Falha ao importar a planilha: ${(erro as Error).message}`);
+        avisar(`Falha ao exportar: ${(erro as Error).message}`);
       }
-      arquivoXlsx.value = '';
-    });
+    };
+
+    const restaurar = (): void => {
+      if (!window.confirm('Restaurar os valores da planilha? Todas as alterações da ficha e da sessão serão perdidas.')) return;
+      ctx.trocarFicha(fichaPadrao(), true);
+      avisar('Valores da planilha restaurados.');
+    };
 
     rodape.append(
-      h('button', {
-        type: 'button',
-        onclick: async () => {
-          try {
-            const texto = gerarJson(ficha);
-            const url = URL.createObjectURL(new Blob([texto], { type: 'application/json' }));
-            const a = h('a', { href: url, download: 'ficha-kitai.json' });
-            document.body.append(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-            avisar('JSON exportado.');
-          } catch (erro) {
-            avisar(`Falha ao exportar: ${(erro as Error).message}`);
-          }
-        },
-      }, 'Exportar JSON'),
+      h('button', { type: 'button', onclick: exportar }, 'Exportar JSON'),
       h('button', { type: 'button', onclick: () => arquivoJson.click() }, 'Importar JSON'),
       h('button', { type: 'button', onclick: () => arquivoXlsx.click() }, 'Importar xlsx'),
-      arquivoJson, arquivoXlsx,
-    );
+      h('button', { type: 'button', class: 'perigo', onclick: restaurar }, 'Restaurar valores da planilha'),
+      arquivoJson, arquivoXlsx);
   }
 
-  function renderTudo(): void {
-    renderCabecalho();
-    renderPainel();
-    renderAbas();
-    renderConteudo();
-    renderRolador();
-    renderRodape();
-    aviso.textContent = mensagem;
-  }
-
-  renderTudo();
+  montarCabecalho();
+  montarPainel();
+  montarRodape();
+  renderAbas();
+  renderConteudo();
+  atualizarTudo();
 }
+
