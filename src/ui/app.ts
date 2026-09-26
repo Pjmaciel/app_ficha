@@ -17,7 +17,7 @@ import { abaTsu } from './abas/tsu';
 import { ATRIBUTOS, ROTULO_ATRIBUTO, rolagem } from './componentes';
 import type { Contexto } from './contexto';
 import { campo, definirTexto, definirValor, entradaNumero, h, inteiro, limpar } from './dom';
-import { carregar, fichaPadrao, salvar } from './estado';
+import { carregar, fichaPadrao, REVISAO_EMBUTIDA, salvar } from './estado';
 import { gerarJson, lerJson, lerXlsx } from './importacao';
 import { aplicarPv, descansar, limitarPv, mudarFadiga, usarPoder } from './sessao';
 
@@ -25,7 +25,7 @@ const ABAS = ['Batalha', 'Resumo de Combate', 'Identidade', 'Atributos', 'Períc
 type Aba = (typeof ABAS)[number];
 
 export function iniciar(raiz: HTMLElement): void {
-  let { ficha, sessao } = carregar();
+  let { ficha, sessao, avisarNovaRevisao } = carregar();
   let abaAtiva: Aba = 'Batalha';
   let ligacoesAba: (() => void)[] = [];
   const ligacoesGlobais: (() => void)[] = [];
@@ -101,6 +101,26 @@ export function iniciar(raiz: HTMLElement): void {
   // ---------- Alertas ----------
   function desenharAlertas(): void {
     limpar(alertas);
+    if (avisarNovaRevisao) {
+      const encerrar = (): void => { avisarNovaRevisao = false; desenharAlertas(); };
+      alertas.append(h('div', { class: 'alerta-caixa', role: 'alert' },
+        h('p', {}, `Há uma versão nova da ficha da planilha (revisão ${REVISAO_EMBUTIDA}). Carregar agora substitui os valores salvos.`),
+        h('button', {
+          type: 'button', class: 'destaque',
+          onclick: () => {
+            ctx.trocarFicha(fichaPadrao());
+            sessao.pvAtual = limitarPv(ctx, sessao.pvAtual);
+            persistir();
+            atualizarTudo();
+            encerrar();
+            avisar('Ficha da planilha carregada.');
+          },
+        }, 'Carregar nova'),
+        h('button', {
+          type: 'button',
+          onclick: () => { ficha.revisaoDados = REVISAO_EMBUTIDA; persistir(); encerrar(); },
+        }, 'Manter a minha')));
+    }
     const bonus = alertaBonusNivel(ficha);
     if (bonus) {
       const esperado = bonusNivelEsperado(ficha);

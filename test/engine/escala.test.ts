@@ -256,7 +256,7 @@ describe('migração para a escala por nível', () => {
 
   it('a ficha salva antes da escala vira a ficha semeada, sem mudar nenhum total', () => {
     const f = migrada();
-    expect(f).toStrictEqual(ficha);
+    expect(f).toStrictEqual({ ...ficha, revisaoDados: 0 });
     for (const [chave, total] of Object.entries(TOTAIS)) expect(combate(f, chave as ChaveCombate).total).toBe(total);
     expect(totalAtributoFicha(f, 'forca')).toBe(322);
     expect(pvTotal(f)).toBe(3404);

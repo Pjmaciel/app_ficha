@@ -15,7 +15,7 @@ describe('importarXlsx', () => {
   const ficha = carregar();
 
   it('reproduz exatamente o JSON de referência do Alexsander, depois da migração que semeia as escalas dos poderes', () => {
-    expect(migrarFicha(ficha)).toStrictEqual(alexsander);
+    expect(migrarFicha(ficha)).toStrictEqual({ ...alexsander, revisaoDados: 0 });
   });
 
   it('o importador não semeia escalas: os poderes saem sem escala e as fontes continuam nomeadas', () => {

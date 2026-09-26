@@ -348,6 +348,7 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
 
   return {
     versao: 2,
+    revisaoDados: 0,
     identidade: {
       nome: texto(lugan, 'D7'),
       jogador: texto(lugan, 'D8'),

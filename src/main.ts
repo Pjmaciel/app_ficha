@@ -12,3 +12,14 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       .catch((erro) => console.error('Falha ao registrar o service worker', erro));
   });
 }
+
+// Quando um novo service worker assume o controle, recarrega uma única vez para exibir a versão nova.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const havia = navigator.serviceWorker.controller !== null;
+  let recarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!havia || recarregou) return;
+    recarregou = true;
+    window.location.reload();
+  });
+}

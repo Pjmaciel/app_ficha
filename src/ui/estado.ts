@@ -1,6 +1,6 @@
 // Estado da aplicação e persistência em localStorage (migrando fichas da versão 1).
 import dadosIniciais from '../data/alexsander.json';
-import { combate, dano, novaSessao, pvTotal } from '../engine';
+import { combate, dano, decidirCarregamento, novaSessao, pvTotal } from '../engine';
 import { importarJson } from '../import';
 import type { Ficha, Sessao } from '../model/types';
 
@@ -44,20 +44,43 @@ export function salvar(ficha: Ficha, sessao: Sessao): void {
   }
 }
 
-/** Ficha salva (validada e migrada pela importação) ou, se ausente ou corrompida, a da planilha. */
-function lerFicha(): Ficha {
-  const texto = lerTexto(CHAVE_FICHA);
-  if (texto) {
-    try {
-      return verificarFicha(importarJson(texto));
-    } catch (erro) {
-      console.error('Ficha salva inválida; usando os valores da planilha', erro);
-    }
-  }
-  return fichaPadrao();
+/** Revisão dos dados da ficha embutida (a da planilha corrente). */
+export const REVISAO_EMBUTIDA = fichaPadrao().revisaoDados;
+
+interface FichaLida {
+  ficha: Ficha;
+  /** A ficha salva era da planilha antiga e foi descartada; da sessão só valem PV e fadiga. */
+  descartouAntiga: boolean;
+  /** Revisão embutida mais nova que a da ficha salva: o app oferece carregar a nova. */
+  avisarNovaRevisao: boolean;
 }
 
-function lerSessao(ficha: Ficha): Sessao {
+/** Ficha salva (validada e migrada pela importação) ou, se ausente, antiga ou corrompida, a da planilha. */
+function lerFicha(): FichaLida {
+  const embutida = fichaPadrao();
+  const texto = lerTexto(CHAVE_FICHA);
+  let bruta: unknown = null;
+  if (texto) {
+    try {
+      bruta = JSON.parse(texto);
+    } catch {
+      bruta = null;
+    }
+  }
+  const decisao = decidirCarregamento(bruta, embutida);
+  if (decisao.acao === 'embutida') {
+    return { ficha: embutida, descartouAntiga: decisao.motivo === 'planilha-antiga', avisarNovaRevisao: false };
+  }
+  try {
+    return { ficha: verificarFicha(importarJson(texto as string)), descartouAntiga: false, avisarNovaRevisao: decisao.avisarNovaRevisao };
+  } catch (erro) {
+    console.error('Ficha salva inválida; usando os valores da planilha', erro);
+    return { ficha: embutida, descartouAntiga: false, avisarNovaRevisao: false };
+  }
+}
+
+/** Sessão salva; com `somentePvEFadiga`, apenas PV (limitado ao novo máximo) e fadiga são aproveitados. */
+function lerSessao(ficha: Ficha, somentePvEFadiga = false): Sessao {
   const padrao = novaSessao(ficha);
   const texto = lerTexto(CHAVE_SESSAO);
   if (!texto) return padrao;
@@ -65,8 +88,12 @@ function lerSessao(ficha: Ficha): Sessao {
     const bruta = JSON.parse(texto) as Partial<Sessao> | null;
     if (typeof bruta !== 'object' || bruta === null) return padrao;
     const numero = (v: unknown, reserva: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : reserva);
+    const pvAtual = numero(bruta.pvAtual, padrao.pvAtual);
+    if (somentePvEFadiga) {
+      return { ...padrao, pvAtual: Math.max(0, Math.min(pvAtual, pvTotal(ficha))), fadiga: Math.max(0, numero(bruta.fadiga, 0)) };
+    }
     return {
-      pvAtual: numero(bruta.pvAtual, padrao.pvAtual),
+      pvAtual,
       fadiga: Math.max(0, numero(bruta.fadiga, 0)),
       usosPoder: typeof bruta.usosPoder === 'object' && bruta.usosPoder !== null ? bruta.usosPoder : {},
       anotacoes: typeof bruta.anotacoes === 'string' ? bruta.anotacoes : '',
@@ -76,10 +103,10 @@ function lerSessao(ficha: Ficha): Sessao {
   }
 }
 
-export function carregar(): { ficha: Ficha; sessao: Sessao } {
-  const ficha = lerFicha();
-  const sessao = lerSessao(ficha);
-  // Grava de volta: registra a migração da versão 1 e descarta campos antigos (como o histórico de rolagens).
+export function carregar(): { ficha: Ficha; sessao: Sessao; avisarNovaRevisao: boolean } {
+  const { ficha, descartouAntiga, avisarNovaRevisao } = lerFicha();
+  const sessao = lerSessao(ficha, descartouAntiga);
+  // Grava de volta: registra a migração e descarta campos antigos (como o histórico de rolagens).
   salvar(ficha, sessao);
-  return { ficha, sessao };
+  return { ficha, sessao, avisarNovaRevisao };
 }

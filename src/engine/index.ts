@@ -502,6 +502,7 @@ function migrarV1(v1: FichaV1): Ficha {
 
   return {
     versao: 2,
+    revisaoDados: 0,
     identidade: { ...v1.identidade, armaPrincipal: '' },
     regras: { pontosIniciais: v1.pontosIniciais, ...REGRAS_PADRAO },
     atributos,
@@ -521,7 +522,8 @@ function migrarV1(v1: FichaV1): Ficha {
 }
 
 /** Ficha versão 2 salva antes da aba Batalha: os campos dela podem faltar. */
-type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes'> & Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes'>>;
+type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados'> &
+  Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados'>>;
 
 /**
  * Completa a versão 2 com os valores padrão da aba Batalha. Cada lista ausente recebe os textos iniciais.
@@ -539,6 +541,7 @@ function completarBatalha(f: FichaV2Anterior): Ficha {
   }
   return {
     ...f,
+    revisaoDados: f.revisaoDados ?? 0,
     acoes: f.acoes ?? acoesPadrao(),
     lembretes: f.lembretes ?? lembretesPadrao(),
     reacoes: f.reacoes ?? reacoesPadrao(),
@@ -631,4 +634,21 @@ export function migrarFicha(json: unknown): Ficha {
   if (versao === 2) return aplicarEscalas(completarBatalha(structuredClone(json as FichaV2Anterior)));
   if (versao === 1) return migrarV1(structuredClone(json as FichaV1));
   throw new Error(`Ficha inválida: versão não suportada (${String(versao)}); esperadas 1 ou 2.`);
+}
+
+/** O que fazer com a ficha salva no navegador diante da ficha embutida. */
+export type DecisaoCarregamento =
+  | { acao: 'embutida'; motivo: 'sem-salva' | 'planilha-antiga' }
+  | { acao: 'salva'; avisarNovaRevisao: boolean };
+
+/**
+ * Decide o carregamento a partir do JSON já lido do armazenamento (ou nulo). Sem ficha salva, ou com a
+ * versão 1 (planilha antiga), vale a embutida; a versão 2 com revisão menor que a embutida é mantida, mas pede aviso.
+ */
+export function decidirCarregamento(salva: unknown, embutida: Ficha): DecisaoCarregamento {
+  if (typeof salva !== 'object' || salva === null || Array.isArray(salva)) return { acao: 'embutida', motivo: 'sem-salva' };
+  const { versao, revisaoDados } = salva as { versao?: unknown; revisaoDados?: unknown };
+  if (versao === 1) return { acao: 'embutida', motivo: 'planilha-antiga' };
+  const revisao = typeof revisaoDados === 'number' && Number.isFinite(revisaoDados) ? revisaoDados : 0;
+  return { acao: 'salva', avisarNovaRevisao: versao === 2 && revisao < embutida.revisaoDados };
 }

@@ -1,5 +1,5 @@
 // Service worker simples: cache dinâmico dos recursos do próprio app (rede primeiro, cache como reserva).
-const CACHE = 'app-ficha-v1';
+const CACHE = 'app-ficha-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 

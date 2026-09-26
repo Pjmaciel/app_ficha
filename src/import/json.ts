@@ -162,6 +162,7 @@ function exigirTextosBatalha(dados: Objeto): void {
 
 /** Valida a estrutura completa da versão 2. */
 function validarV2(dados: Objeto): void {
+  exigir(dados.revisaoDados === undefined || ehNumero(dados.revisaoDados), 'revisaoDados deve ser numérico.');
   exigirIdentidade(dados.identidade, ['nome', 'jogador', 'raca', 'reino', 'pilarLuganico', 'armaPrincipal']);
 
   const { regras, atributos, combate, dano, golpes, poderes, xp } = dados;

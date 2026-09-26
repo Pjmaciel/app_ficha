@@ -136,7 +136,7 @@ describe('importarJson e a escala por nível dos poderes', () => {
 
   it('a ficha salva antes da escala é migrada: as fontes viram parcelas derivadas e os totais não mudam', () => {
     const f = importarJson(JSON.stringify(antiga));
-    expect(f).toStrictEqual(ficha);
+    expect(f).toStrictEqual({ ...ficha, revisaoDados: 0 });
   });
 
   it('aceita escala completa e a preserva na ida e volta', () => {

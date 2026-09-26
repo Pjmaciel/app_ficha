@@ -116,6 +116,8 @@ export interface Regras {
 
 export interface Ficha {
   versao: 2;
+  /** Revisão dos dados da planilha embutida (0 quando ausente); permite avisar o jogador de uma versão mais nova. */
+  revisaoDados: number;
   identidade: {
     nome: string;
     jogador: string;
