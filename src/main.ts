@@ -1,6 +1,8 @@
-// Placeholder: a interface real será escrita pelo worker D.
+import './styles/main.css';
+import { iniciar } from './ui/app';
+
 const raiz = document.getElementById('app');
-if (raiz) raiz.textContent = 'app_ficha';
+if (raiz) iniciar(raiz);
 
 // O service worker só é registrado em produção.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
