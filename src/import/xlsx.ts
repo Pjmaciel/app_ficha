@@ -3,19 +3,21 @@ import type {
   AtributoId,
   ChaveCombate,
   Elemento,
+  EntradaCombate,
   Ficha,
+  Fonte,
   GrupoPericia,
   Pericia,
   Poder,
+  TipoPoder,
   Tsu,
 } from '../model/types';
 
-/**
- * Nível informado pela planilha desatualizada (I8) e nível efetivo do personagem.
- * Decisão registrada em docs/discovery.md: o personagem é de nível 41.
- */
-const NIVEL_DESATUALIZADO_PLANILHA = 35;
-const NIVEL_EFETIVO = 41;
+/** Regras do contrato v2 que a planilha não traz em células numéricas próprias. */
+const NIVEL_REFERENCIA = 41;
+const BONUS_REFERENCIA = 47;
+const DIFERENCA_MAXIMA_ATRIBUTOS = 120;
+const ARMA_PRINCIPAL = 'Jikar';
 
 const ATRIBUTOS_POR_LINHA: [AtributoId, number][] = [
   ['forca', 15],
@@ -24,16 +26,6 @@ const ATRIBUTOS_POR_LINHA: [AtributoId, number][] = [
   ['fortitude', 18],
   ['distancia', 19],
   ['mental', 20],
-];
-
-const CHAVES_COMBATE: [ChaveCombate, number][] = [
-  ['ataqueArmaBranca', 26],
-  ['ataqueMagico', 27],
-  ['ataqueLuta', 28],
-  ['ataqueArmaFogo', 29],
-  ['esquivar', 30],
-  ['bloquear', 31],
-  ['aparar', 32],
 ];
 
 const TSU_POR_LINHA: [Elemento, number][] = [
@@ -45,7 +37,7 @@ const TSU_POR_LINHA: [Elemento, number][] = [
   ['trevas', 96],
 ];
 
-// Linha da aba LUGAN -> [id, nome, grupo]. Os ids e grupos seguem o contrato do modelo.
+// [linha da aba LUGAN, id, nome, grupo]. Os ids e grupos seguem o contrato do modelo.
 const PERICIAS: [number, string, string, GrupoPericia][] = [
   [16, 'atuacao', 'Atuação', 'artes'],
   [17, 'canto', 'Canto', 'artes'],
@@ -168,63 +160,168 @@ function valorInicial(lugan: XLSX.WorkSheet, ficha: XLSX.WorkSheet, linha: numbe
   return numero(ficha, `N${linhaFicha}`);
 }
 
-/** Junta linhas de descrição em uma única frase corrida. */
-function normalizar(t: string): string {
-  return t.replace(/\s*\n\s*/g, ' ').replace(/\s+/g, ' ').trim();
+
+
+/**
+ * Junta as linhas de uma célula em texto corrido. Cada quebra vira "; ", exceto quando a linha
+ * anterior já termina em ";" ou "." (então basta um espaço, sem pontuação duplicada).
+ */
+function juntarLinhas(t: string): string {
+  return t
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l !== '')
+    .reduce((acc, l) => (acc === '' ? l : `${acc}${/[;.]$/.test(acc) ? ' ' : '; '}${l}`), '');
 }
 
-function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
-  const simples: [string, string, number][] = [
-    ['velocidade_divina', 'Velocidade Divina', 73],
-    ['lugan_da_batalha', 'Lugan da Batalha', 76],
-    ['golpe_devastador', 'Golpe Devastador de Lugan', 79],
-  ];
-  const poderes: Poder[] = simples.map(([id, nome, linha]) => ({
-    id,
-    nome,
-    nivel: numero(lugan, `D${linha}`),
-    descricao: normalizar(texto(lugan, `E${linha}`)),
-  }));
-
-  // Golpe Especial: o nome ocupa B82 e a descrição se espalha por E82:E86.
-  const cabecalho = texto(lugan, 'E82');
-  const custo = cabecalho.match(/^(\d+)\s+Fadiga/);
-  // A planilha não termina o efeito 3 com ponto final; o texto do modelo o acrescenta.
-  const efeitos = [83, 84, 85].map((l) =>
-    normalizar(texto(lugan, `E${l}`))
-      .replace(/\s+—\s+/, ': ')
-      .replace(/\.?$/, '.'),
-  );
-  const descricao = [cabecalho.replace(/:$/, '.'), ...efeitos, normalizar(texto(lugan, 'E86'))].join(' ');
-  const especial: Poder = {
-    id: 'golpe_especial_campeao',
-    nome: 'Golpe Especial: Competência (Campeão das Nações)',
-    nivel: numero(lugan, 'D82'),
-    descricao,
-  };
-  if (custo) especial.custoFadiga = Number(custo[1]);
-  poderes.push(especial);
-  return poderes;
+/** Nível de um poder: vazio na planilha (item, como a Jikar) vira nulo. */
+function nivelOuNulo(aba: XLSX.WorkSheet, endereco: string): number | null {
+  const c = celula(aba, endereco);
+  return c === undefined || c.v === undefined || c.v === '' ? null : numero(aba, endereco);
 }
 
 /**
- * Importa a planilha do personagem (abas LUGAN e FICHA) e devolve a ficha do modelo.
- * O nível é forçado para 41 quando a planilha desatualizada traz 35.
+ * Poderes da aba LUGAN: id, nome, tipo, uso por dia e a linha inicial (colunas D nível, E descrição).
+ * Os nomes seguem o contrato (a planilha tem erros de digitação, como "montadas"); só o nível e a
+ * descrição vêm das células.
+ */
+const PODERES: { id: string; nome: string; tipo: TipoPoder; linha: number; usosPorDia?: number }[] = [
+  { id: 'velocidade_divina', nome: 'Velocidade Divina', tipo: 'passivo', linha: 73 },
+  { id: 'lugan_da_batalha', nome: 'Lugan da Batalha', tipo: 'passivo', linha: 76 },
+  { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', tipo: 'ativo', linha: 79 },
+  { id: 'portador_da_jikar', nome: 'Portador da Jikar', tipo: 'item', linha: 82 },
+  { id: 'campeao_do_combate_divino', nome: 'Campeão do Combate Divino', tipo: 'passivo', linha: 87 },
+  { id: 'forca_das_montanhas_divinas', nome: 'Força das Montanhas Divinas', tipo: 'passivo', linha: 93 },
+  { id: 'protecao_divina', nome: 'Proteção Divina', tipo: 'defensivo', linha: 98, usosPorDia: 1 },
+  { id: 'o_filho_de_hagashi', nome: 'O Filho de Hagashi', tipo: 'passivo', linha: 106, usosPorDia: 1 },
+  { id: 'lugan_completo', nome: 'Lugan Completo', tipo: 'passivo', linha: 115 },
+  { id: 'manipulador_de_tsu_real', nome: 'Manipulador de Tsu Real', tipo: 'passivo', linha: 124 },
+  { id: 'fogo_real', nome: 'Fogo Real', tipo: 'ativo', linha: 130 },
+];
+
+/** Descrição do poder: célula E da linha, ou, no Lugan da Batalha, E76:F78 (valor calculado + texto). */
+function descricaoDoPoder(lugan: XLSX.WorkSheet, id: string, linha: number): string {
+  if (id !== 'lugan_da_batalha') return juntarLinhas(texto(lugan, `E${linha}`));
+  const partes = [76, 77, 78].map((l) => `+${numero(lugan, `E${l}`)} ${texto(lugan, `F${l}`)}`);
+  return juntarLinhas(partes.join('\n'));
+}
+
+function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
+  return PODERES.map(({ id, nome, tipo, linha, usosPorDia }) => {
+    const poder: Poder = {
+      id,
+      nome,
+      nivel: nivelOuNulo(lugan, `D${linha}`),
+      tipo,
+      descricao: descricaoDoPoder(lugan, id, linha),
+    };
+    if (usosPorDia !== undefined) poder.usosPorDia = usosPorDia;
+    return poder;
+  });
+}
+
+const fonte = (nome: string, valor: number): Fonte => ({ nome, valor });
+
+const LUGAN_DA_BATALHA = 'Lugan da Batalha';
+const CAMPEAO = 'Campeão do Combate Divino';
+const LUGAN_COMPLETO = 'Lugan Completo';
+const JIKAR_ATAQUE: Fonte[] = [fonte('Jikar', 3)];
+
+/**
+ * Composição do bônus passivo (coluna E) de cada valor de combate. O Lugan da Batalha é lido da
+ * planilha (E76); as demais parcelas vêm do texto dos poderes. O que sobrar da soma da coluna E vira
+ * "Outros", de modo que a soma das fontes seja sempre a coluna E.
+ */
+const COMBATE: Record<ChaveCombate, { linha: number; nomeadas: (luganDaBatalha: number) => Fonte[]; dadosExtras: Fonte[]; fieisPor: number | null }> = {
+  ataqueArmaBranca: {
+    linha: 26,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(CAMPEAO, 140), fonte(LUGAN_COMPLETO, 60)],
+    dadosExtras: JIKAR_ATAQUE,
+    fieisPor: 200,
+  },
+  ataqueMagico: {
+    linha: 27,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(LUGAN_COMPLETO, 60), fonte('Manipulador de Tsu Real', 70)],
+    dadosExtras: [],
+    fieisPor: null,
+  },
+  ataqueLuta: {
+    linha: 28,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(LUGAN_COMPLETO, 60)],
+    dadosExtras: [],
+    fieisPor: null,
+  },
+  ataqueArmaFogo: {
+    linha: 29,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(LUGAN_COMPLETO, 60)],
+    dadosExtras: [],
+    fieisPor: null,
+  },
+  esquivar: {
+    linha: 30,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(LUGAN_COMPLETO, 60)],
+    dadosExtras: JIKAR_ATAQUE,
+    fieisPor: 100,
+  },
+  bloquear: {
+    linha: 31,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(LUGAN_COMPLETO, 60)],
+    dadosExtras: JIKAR_ATAQUE,
+    fieisPor: 100,
+  },
+  aparar: {
+    linha: 32,
+    nomeadas: (lb) => [fonte(LUGAN_DA_BATALHA, lb), fonte(CAMPEAO, 140), fonte(LUGAN_COMPLETO, 60)],
+    dadosExtras: JIKAR_ATAQUE,
+    fieisPor: 200,
+  },
+};
+
+function lerCombate(lugan: XLSX.WorkSheet): Ficha['combate'] {
+  const luganDaBatalha = numero(lugan, 'E76');
+  const combate = {} as Ficha['combate'];
+  for (const chave of Object.keys(COMBATE) as ChaveCombate[]) {
+    const { linha, nomeadas, dadosExtras, fieisPor } = COMBATE[chave];
+    const fontes = nomeadas(luganDaBatalha);
+    const outros = numero(lugan, `E${linha}`) - fontes.reduce((s, x) => s + x.valor, 0);
+    if (outros !== 0) fontes.push(fonte('Outros', outros));
+    const entrada: EntradaCombate = { fontes, dadosExtras: structuredClone(dadosExtras), fieisPor };
+    combate[chave] = entrada;
+  }
+  return combate;
+}
+
+/** Extra de atributo: só a Força tem origem conhecida (Força das Montanhas Divinas, F15). */
+function lerExtras(lugan: XLSX.WorkSheet, id: AtributoId, linha: number): Fonte[] {
+  const valor = numero(lugan, `F${linha}`);
+  if (valor === 0) return [];
+  return [fonte(id === 'forca' ? 'Força das Montanhas Divinas' : 'Bônus extra', valor)];
+}
+
+/** Lê o primeiro número de uma célula de rótulo (por exemplo "1.018 PONTOS INICIAIS" ou "4 EM TODOS POR NÍVEL"). */
+function primeiroNumero(lugan: XLSX.WorkSheet, endereco: string): number {
+  const n = Number(texto(lugan, endereco).match(/^([\d.]+)/)?.[1].replace(/\./g, ''));
+  if (!Number.isFinite(n)) throw new Error(`Planilha inválida: ${endereco} não começa com um número.`);
+  return n;
+}
+
+/**
+ * Importa a planilha do personagem (abas LUGAN e FICHA) e devolve a ficha versão 2.
+ * A estrutura de fontes de combate, os dados extras, o dano e o golpe vêm do contrato v2; da planilha
+ * vêm identidade, bônus de nível, pontos, extras, perícias, PV extra, valores passivos, poderes e Tsu.
+ * As anotações de dano e fiéis das células F25:F32 são ignoradas.
  */
 export function importarXlsx(buffer: ArrayBuffer): Ficha {
   const livro = XLSX.read(new Uint8Array(buffer), { type: 'array' });
   const lugan = exigirAba(livro, 'LUGAN');
   const fichaBase = exigirAba(livro, 'FICHA');
 
-  const nivelPlanilha = numero(lugan, 'I8');
-  const nivel = nivelPlanilha === NIVEL_DESATUALIZADO_PLANILHA ? NIVEL_EFETIVO : nivelPlanilha;
-
   const atributos = {} as Ficha['atributos'];
   for (const [id, linha] of ATRIBUTOS_POR_LINHA) {
     atributos[id] = {
-      bonus: numero(lugan, `D${linha}`),
+      bonusNivel: numero(lugan, `D${linha}`),
       pontos: numero(lugan, `E${linha}`),
-      bonusExtra: numero(lugan, `F${linha}`),
+      extras: lerExtras(lugan, id, linha),
     };
   }
 
@@ -237,37 +334,51 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
     graduacao: numero(lugan, `L${linha}`),
   }));
 
-  const bonusPassivo = {} as Ficha['combate']['bonusPassivo'];
-  for (const [chave, linha] of CHAVES_COMBATE) bonusPassivo[chave] = numero(lugan, `E${linha}`);
-
-  // A Tsu real é a que possui o valor multiplicado na coluna J (J94 = I94*8).
+  // A Tsu real é a que tem fórmula na coluna J (por exemplo J91 = I91*8); vários podem ser reais.
   const tsu: Tsu[] = TSU_POR_LINHA.map(([elemento, linha]) => ({
     elemento,
     nivel: numero(lugan, `I${linha}`),
-    real: celula(lugan, `J${linha}`) !== undefined,
+    real: celula(lugan, `J${linha}`)?.f !== undefined,
   }));
 
-  const pontosIniciais = Number(texto(lugan, 'B13').match(/^([\d.]+)/)?.[1].replace(/\./g, ''));
-  if (!Number.isFinite(pontosIniciais)) throw new Error('Planilha inválida: B13 não informa os pontos iniciais.');
+  const pvExtra = numero(lugan, 'F22');
 
   return {
-    versao: 1,
+    versao: 2,
     identidade: {
       nome: texto(lugan, 'D7'),
       jogador: texto(lugan, 'D8'),
       raca: texto(lugan, 'D9'),
       reino: texto(lugan, 'D10'),
       pilarLuganico: texto(lugan, 'I7'),
-      nivel,
+      nivel: numero(lugan, 'I8'),
       nivelLuganico: numero(lugan, 'I9'),
       basePv: numero(lugan, 'I10'),
+      armaPrincipal: ARMA_PRINCIPAL,
     },
-    pontosIniciais,
+    regras: {
+      pontosIniciais: primeiroNumero(lugan, 'B13'),
+      bonusPorNivel: primeiroNumero(lugan, 'H13'),
+      nivelReferencia: NIVEL_REFERENCIA,
+      bonusReferencia: BONUS_REFERENCIA,
+      diferencaMaximaAtributos: DIFERENCA_MAXIMA_ATRIBUTOS,
+    },
     atributos,
     pericias,
-    combate: { bonusPassivo },
+    pvExtras: pvExtra !== 0 ? [fonte('Proteção Divina', pvExtra)] : [],
+    combate: lerCombate(lugan),
+    dano: {
+      atributo: 'forca',
+      dadosExtras: [fonte('Jikar', 1)],
+      fixos: [fonte(LUGAN_DA_BATALHA, numero(lugan, 'E78')), fonte(CAMPEAO, 40), fonte(LUGAN_COMPLETO, 20)],
+      fieisPor: 400,
+    },
+    golpes: [
+      { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 3, dadosDanoExtras: 2, ativo: false },
+    ],
     poderes: lerPoderes(lugan),
     tsu,
+    fieis: 0,
     xp: { total: numero(lugan, 'C1'), atual: numero(lugan, 'E4') },
   };
 }
