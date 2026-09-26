@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChaveCombate, Ficha } from '../../src/model/types';
 import dados from '../../src/data/alexsander.json';
+import { fontesDerivadasCombate, fontesDerivadasDano, usosPorDiaDoPoder } from '../../src/engine';
 
 const ficha = dados as Ficha;
 
@@ -31,7 +32,7 @@ describe('ficha do Alexsander', () => {
     });
   });
 
-  it('as fontes de combate somam a coluna E da planilha', () => {
+  it('as fontes manuais e as parcelas derivadas dos poderes somam a coluna E da planilha', () => {
     const esperado: Record<ChaveCombate, number> = {
       ataqueArmaBranca: 470,
       ataqueMagico: 280,
@@ -42,7 +43,7 @@ describe('ficha do Alexsander', () => {
       aparar: 470,
     };
     for (const [chave, soma] of Object.entries(esperado)) {
-      expect(somaFontes(ficha.combate[chave as ChaveCombate].fontes)).toBe(soma);
+      expect(somaFontes(ficha.combate[chave as ChaveCombate].fontes) + somaFontes(fontesDerivadasCombate(ficha, chave as ChaveCombate))).toBe(soma);
     }
   });
 
@@ -55,7 +56,7 @@ describe('ficha do Alexsander', () => {
     expect(ficha.combate.esquivar.fieisPor).toBe(100);
     expect(ficha.combate.ataqueMagico.fieisPor).toBeNull();
     expect(somaFontes(ficha.dano.dadosExtras)).toBe(1);
-    expect(somaFontes(ficha.dano.fixos)).toBe(120);
+    expect(somaFontes(ficha.dano.fixos) + somaFontes(fontesDerivadasDano(ficha))).toBe(120);
     expect(ficha.dano.fieisPor).toBe(400);
     expect(ficha.fieis).toBe(0);
   });
@@ -65,19 +66,22 @@ describe('ficha do Alexsander', () => {
     expect(ficha.poderes.every((p) => p.tipo !== 'removido')).toBe(true);
   });
 
-  it('o golpe devastador soma +3 dados de ataque e +2 de dano', () => {
+  it('o golpe devastador guarda o ajuste fixo (0 e −1) que, com a escala do poder no nível 3, dá +3 dados de ataque e +2 de dano', () => {
     expect(ficha.golpes).toEqual([
       {
-        id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 3, dadosDanoExtras: 2,
+        id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 0, dadosDanoExtras: -1,
         ativo: false, pressaoPorPonto: 8,
       },
     ]);
+    expect(ficha.poderes.find((p) => p.id === 'golpe_devastador')?.escala).toMatchObject({ dadosAtaquePorNivel: 1, dadosDanoPorNivel: 1 });
   });
 
-  it('o poder Golpe Devastador tem 3 usos por dia, igual ao nível', () => {
+  it('o poder Golpe Devastador tem 3 usos por dia, derivados do nível (1 por nível)', () => {
     const poder = ficha.poderes.find((p) => p.id === 'golpe_devastador');
     expect(poder?.nivel).toBe(3);
-    expect(poder?.usosPorDia).toBe(3);
+    expect(poder?.usosPorDia).toBeUndefined();
+    expect(poder?.escala?.usosPorNivel).toBe(1);
+    expect(usosPorDiaDoPoder(poder!)).toBe(3);
   });
 
   it('traz as ações, os lembretes e as reações da aba Batalha', () => {

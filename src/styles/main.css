@@ -154,6 +154,19 @@ button.grande { min-height: 3.25rem; font-size: 1.05rem; }
 .lista-fontes .fonte { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem auto; gap: 0.4rem; align-items: center; }
 .lista-fontes input[type='number'] { width: 100%; }
 .acoes-fonte { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+
+/* Parcelas derivadas de poderes (somente leitura) e escala por nível */
+.lista-derivadas { list-style: none; margin: 0.3rem 0; padding: 0; display: grid; gap: 0.3rem; }
+.derivada {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 0.6rem; align-items: center;
+  padding: 0.35rem 0.6rem; background: var(--fundo); border: 1px dashed var(--borda); border-radius: 0.5rem;
+}
+.derivada .nome-derivada { font-weight: 600; overflow-wrap: anywhere; }
+.derivada .detalhe { grid-column: 1; }
+.derivada strong { grid-column: 2; grid-row: 1 / span 2; color: var(--destaque); }
+.escala-poder { margin: 0.5rem 0; border: 1px solid var(--borda); border-radius: 0.5rem; padding: 0.4rem 0.75rem; }
+.escala-poder summary { cursor: pointer; font-weight: 600; min-height: 2.25rem; display: flex; align-items: center; }
+.resumo-escala { font-weight: 600; color: var(--texto); }
 .lista-golpes, .lista-poderes { display: grid; gap: 0.6rem; margin: 0.6rem 0; }
 .poder.removido { opacity: 0.55; filter: grayscale(1); }
 .poder.removido:focus-within { opacity: 1; }

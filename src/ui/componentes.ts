@@ -1,5 +1,6 @@
 // Rótulos, formatação e componentes reutilizados pelas abas.
-import type { AtributoId, ChaveCombate, Elemento, Fonte, GrupoPericia, TipoPoder } from '../model/types';
+import { comSinal, ehDerivada } from '../engine';
+import type { AtributoId, ChaveCombate, Elemento, Fonte, FonteDerivada, GrupoPericia, TipoPoder } from '../model/types';
 import type { Contexto } from './contexto';
 import { campo, definirTexto, entradaNumero, entradaTexto, h, limpar } from './dom';
 
@@ -34,12 +35,23 @@ export const ROTULO_TIPO_PODER: Record<TipoPoder, string> = {
   passivo: 'Passivo', ativo: 'Ativo', defensivo: 'Defensivo', item: 'Item', removido: 'Removido',
 };
 
-export { comSinal, formatarRolagem as rolagem } from '../engine';
+export { comSinal, ehDerivada, formatarRolagem as rolagem } from '../engine';
 
 export const somaFontes = (fontes: Fonte[]): number => fontes.reduce((s, f) => s + f.valor, 0);
 
 /** Linha de uma composição: origem do valor e sua parcela. */
 export interface Linha { rotulo: string; valor: string; subitem?: boolean }
+
+/** "nível 3 × 50": de onde vem uma parcela derivada de poder. */
+export const origemDerivada = (d: FonteDerivada): string => `nível ${d.nivel} × ${d.coeficiente}`;
+
+/** Linha da composição para uma fonte: a derivada de poder mostra origem, nível e coeficiente. */
+export function linhaDaFonte(x: Fonte, prefixo = ''): Linha {
+  return {
+    rotulo: ehDerivada(x) ? `${prefixo}${x.nome} (poder, ${origemDerivada(x)})` : `${prefixo}${x.nome}`,
+    valor: comSinal(x.valor),
+  };
+}
 
 /**
  * Botão "composição" que abre a lista de fontes de um valor. A lista é refeita a cada
@@ -69,7 +81,29 @@ export function blocoComposicao(ctx: Contexto, chave: string, titulo: string, li
   return h('div', { class: 'bloco-composicao' }, botao, lista);
 }
 
+/**
+ * Lista somente leitura das parcelas derivadas de poderes (nome do poder, "nível N" e o valor). Refeita a cada
+ * mudança; a edição fica na aba Poderes (nível e escala).
+ */
+export function listaDerivadas(ctx: Contexto, obter: () => FonteDerivada[]): HTMLElement {
+  const lista = h('ul', { class: 'lista-derivadas', 'aria-label': 'Parcelas derivadas de poderes' });
+  ctx.ligar(() => {
+    const derivadas = obter();
+    lista.hidden = derivadas.length === 0;
+    limpar(lista);
+    for (const d of derivadas) {
+      lista.append(h('li', { class: 'derivada' },
+        h('span', { class: 'nome-derivada' }, d.nome || 'Sem nome'),
+        h('span', { class: 'detalhe' }, `derivada do poder · ${origemDerivada(d)}`),
+        h('strong', {}, comSinal(d.valor))));
+    }
+  });
+  return lista;
+}
+
 interface OpcoesEditorFontes {
+  /** Parcelas derivadas de poderes exibidas antes das manuais, sem edição; entram na soma. */
+  derivadas?: () => FonteDerivada[];
   /** Nome da lista, usado nos rótulos de acessibilidade (ex.: "Extras de Força"). */
   titulo: string;
   /** Texto do botão de adicionar (ex.: "Adicionar extra"). */
@@ -106,10 +140,11 @@ export function editorFontes(ctx: Contexto, fontes: Fonte[], op: OpcoesEditorFon
   };
   desenhar();
 
-  ctx.ligar(() => definirTexto(soma, `Soma: ${somaFontes(fontes)}`));
+  ctx.ligar(() => definirTexto(soma, `Soma: ${somaFontes(fontes) + (op.derivadas ? somaFontes(op.derivadas()) : 0)}`));
 
   return h('div', { class: 'editor-fontes' },
     op.cabecalho ? h('div', { class: 'linha-titulo' }, h('strong', {}, op.titulo), soma) : null,
+    op.derivadas ? listaDerivadas(ctx, op.derivadas) : null,
     lista,
     h('div', { class: 'acoes-fonte' },
       h('button', {

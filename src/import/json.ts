@@ -30,7 +30,34 @@ const ehNumero = (v: unknown): boolean => typeof v === 'number' && Number.isFini
 function exigirFontes(v: unknown, caminho: string): void {
   exigir(Array.isArray(v), `${caminho} deve ser uma lista.`);
   for (const f of v) {
-    exigir(ehObjeto(f) && typeof f.nome === 'string' && ehNumero(f.valor), `${caminho} tem fonte inválida.`);
+    exigir(
+      ehObjeto(f) && typeof f.nome === 'string' && ehNumero(f.valor) && (f.poderId === undefined || typeof f.poderId === 'string'),
+      `${caminho} tem fonte inválida.`,
+    );
+  }
+}
+
+const CAMPOS_ESCALA_NUMERICOS = ['danoPorNivel', 'pvPorNivel', 'usosPorNivel', 'fieisPorNivel', 'dadosAtaquePorNivel', 'dadosDanoPorNivel'];
+
+/** Valida a escala por nível de um poder (todos os campos são opcionais). */
+function exigirEscala(escala: unknown, id: string): void {
+  exigir(ehObjeto(escala), `poder ${id} com escala inválida (deve ser um objeto).`);
+  for (const campo of CAMPOS_ESCALA_NUMERICOS) {
+    exigir(escala[campo] === undefined || ehNumero(escala[campo]), `poder ${id} com escala.${campo} não numérico.`);
+  }
+  const ataque = escala.ataquePorNivel;
+  if (ataque !== undefined) {
+    exigir(
+      ehObjeto(ataque) && Object.entries(ataque).every(([k, v]) => (CHAVES_COMBATE as string[]).includes(k) && ehNumero(v)),
+      `poder ${id} com escala.ataquePorNivel inválido (chaves de combate com valores numéricos).`,
+    );
+  }
+  const atributo = escala.atributoPorNivel;
+  if (atributo !== undefined) {
+    exigir(
+      ehObjeto(atributo) && typeof atributo.atributo === 'string' && (ATRIBUTOS as string[]).includes(atributo.atributo) && ehNumero(atributo.valor),
+      `poder ${id} com escala.atributoPorNivel inválido (atributo e valor).`,
+    );
   }
 }
 
@@ -192,6 +219,7 @@ function validarV2(dados: Objeto): void {
       exigir(p[campo] === undefined || ehNumero(p[campo]), `poder ${p.id} com ${campo} não numérico.`);
     }
     exigir(p.mostrarNaBatalha === undefined || typeof p.mostrarNaBatalha === 'boolean', `poder ${p.id} com mostrarNaBatalha inválido.`);
+    if (p.escala !== undefined) exigirEscala(p.escala, p.id);
   }
 
   exigirTsu(dados.tsu);
@@ -206,8 +234,8 @@ export function exportarJson(f: Ficha): string {
 }
 
 /**
- * Lê um backup em JSON. A versão 2 é validada por inteiro e recebe os padrões da aba Batalha quando
- * faltam; a versão 1 é validada e migrada para a 2. Qualquer outra versão é rejeitada.
+ * Lê um backup em JSON. A versão 2 é validada por inteiro e recebe os padrões da aba Batalha e a escala por
+ * nível dos poderes conhecidos quando faltam; a versão 1 é validada e migrada para a 2. Qualquer outra versão é rejeitada.
  */
 export function importarJson(texto: string): Ficha {
   let dados: unknown;

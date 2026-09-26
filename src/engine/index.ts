@@ -1,11 +1,14 @@
 import { PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
+import { escalaPadrao } from '../model/escalas-padrao';
 import type {
   AcaoBatalha,
   Atributo,
   AtributoId,
   ChaveCombate,
+  EscalaPoder,
   Ficha,
   Fonte,
+  FonteDerivada,
   GolpeEspecial,
   Poder,
   Reacao,
@@ -27,14 +30,86 @@ const ROTULO_ATRIBUTO: Record<AtributoId, string> = {
 
 const somaFontes = (fontes: Fonte[]): number => fontes.reduce((s, f) => s + f.valor, 0);
 
+// ---------- Parcelas derivadas dos poderes (escala × nível) ----------
+
+/** Nível usado nas escalas: poder sem nível conta como zero. */
+const nivelDoPoder = (p: Poder): number => p.nivel ?? 0;
+
+/** Poderes que contribuem: têm escala e não foram removidos. */
+const poderesComEscala = (f: Ficha): (Poder & { escala: EscalaPoder })[] =>
+  f.poderes.filter((p): p is Poder & { escala: EscalaPoder } => p.tipo !== 'removido' && p.escala !== undefined);
+
+/** Parcela do poder: coeficiente × nível; sem coeficiente (ou zero) não há parcela. */
+function parcela(p: Poder, coeficiente: number | undefined): FonteDerivada[] {
+  if (coeficiente === undefined || coeficiente === 0) return [];
+  const nivel = nivelDoPoder(p);
+  return [{ nome: p.nome, valor: coeficiente * nivel, poderId: p.id, nivel, coeficiente }];
+}
+
+/** Parcela derivada (gerada pelo motor a partir de um poder) em vez de fonte manual. */
+export function ehDerivada(fonte: Fonte): fonte is FonteDerivada {
+  return fonte.poderId !== undefined;
+}
+
+/** Parcelas de ataque ou defesa que os poderes dão à chave de combate. */
+export function fontesDerivadasCombate(f: Ficha, chave: ChaveCombate): FonteDerivada[] {
+  return poderesComEscala(f).flatMap((p) => parcela(p, p.escala.ataquePorNivel?.[chave]));
+}
+
+/** Parcelas fixas de dano dos poderes. */
+export function fontesDerivadasDano(f: Ficha): FonteDerivada[] {
+  return poderesComEscala(f).flatMap((p) => parcela(p, p.escala.danoPorNivel));
+}
+
+/** Parcelas dos poderes no atributo (somam ao total, como os extras nomeados). */
+export function fontesDerivadasAtributo(f: Ficha, id: AtributoId): FonteDerivada[] {
+  return poderesComEscala(f).flatMap((p) =>
+    p.escala.atributoPorNivel?.atributo === id ? parcela(p, p.escala.atributoPorNivel.valor) : []);
+}
+
+/** Parcelas de PV extra dos poderes. */
+export function fontesDerivadasPv(f: Ficha): FonteDerivada[] {
+  return poderesComEscala(f).flatMap((p) => parcela(p, p.escala.pvPorNivel));
+}
+
+/** Usos por dia efetivos: `usosPorNivel × nível` quando o poder tem nível e essa escala; senão o valor manual. */
+export function usosPorDiaDoPoder(p: Poder): number | undefined {
+  const porNivel = p.escala?.usosPorNivel;
+  if (porNivel !== undefined && p.nivel !== null) return porNivel * p.nivel;
+  return p.usosPorDia;
+}
+
+/** Fiéis sugeridos pelos poderes (fiéis por nível × nível); nulo se nenhum poder tem essa escala. */
+export function fieisSugeridos(f: Ficha): number | null {
+  const poderes = poderesComEscala(f).filter((p) => p.escala.fieisPorNivel !== undefined);
+  if (poderes.length === 0) return null;
+  return poderes.reduce((s, p) => s + (p.escala.fieisPorNivel ?? 0) * nivelDoPoder(p), 0);
+}
+
+/** Dados extras do golpe: o ajuste fixo do golpe mais a escala do poder de mesmo id (× nível). */
+export function dadosDoGolpe(f: Ficha, g: GolpeEspecial): { ataque: number; dano: number } {
+  const p = f.poderes.find((x) => x.id === g.id);
+  const ativo = p !== undefined && p.tipo !== 'removido' ? p : undefined;
+  const nivel = ativo ? nivelDoPoder(ativo) : 0;
+  return {
+    ataque: g.dadosAtaqueExtras + (ativo?.escala?.dadosAtaquePorNivel ?? 0) * nivel,
+    dano: g.dadosDanoExtras + (ativo?.escala?.dadosDanoPorNivel ?? 0) * nivel,
+  };
+}
+
 /** Base do atributo: bônus de nível + pontos distribuídos (sem extras). */
 export function baseAtributo(a: Atributo): number {
   return a.bonusNivel + a.pontos;
 }
 
-/** Total do atributo: base + soma dos extras nomeados. */
+/** Total do atributo sem as parcelas dos poderes: base + soma dos extras nomeados (manuais). */
 export function totalAtributo(a: Atributo): number {
   return baseAtributo(a) + somaFontes(a.extras);
+}
+
+/** Total do atributo na ficha: base + extras manuais + parcelas derivadas dos poderes. */
+export function totalAtributoFicha(f: Ficha, id: AtributoId): number {
+  return totalAtributo(f.atributos[id]) + somaFontes(fontesDerivadasAtributo(f, id));
 }
 
 /** Saldo de pontos ainda não distribuídos (negativo indica excesso). */
@@ -85,17 +160,17 @@ export function diferencaAtributos(f: Ficha): {
 export function totalPericia(f: Ficha, id: string): number {
   const p = f.pericias.find((x) => x.id === id);
   if (!p) throw new Error(`Perícia inexistente: ${id}`);
-  return p.inicial + totalAtributo(f.atributos[p.atributo]) + p.graduacao;
+  return p.inicial + totalAtributoFicha(f, p.atributo) + p.graduacao;
 }
 
 /** Pontos de vida sem extras: basePv × total de Fortitude. */
 export function pvBase(f: Ficha): number {
-  return f.identidade.basePv * totalAtributo(f.atributos.fortitude);
+  return f.identidade.basePv * totalAtributoFicha(f, 'fortitude');
 }
 
-/** Pontos de vida máximos: base + PV extras nomeados. */
+/** Pontos de vida máximos: base + PV extras manuais + PV derivados dos poderes. */
 export function pvTotal(f: Ficha): number {
-  return pvBase(f) + somaFontes(f.pvExtras);
+  return pvBase(f) + somaFontes(f.pvExtras) + somaFontes(fontesDerivadasPv(f));
 }
 
 /** Dados de multiplicador por nível: um por bloco de 10 níveis a partir do 31. */
@@ -111,7 +186,7 @@ function bonusFieis(fieis: number, fieisPor: number | null): number {
 
 /** Parte da fórmula que vem das perícias e atributos, antes das fontes e dos fiéis. */
 function baseCombate(f: Ficha, chave: ChaveCombate): Fonte[] {
-  const attr = (id: AtributoId) => totalAtributo(f.atributos[id]);
+  const attr = (id: AtributoId) => totalAtributoFicha(f, id);
   const pericia = (id: string, nome: string): Fonte => ({ nome: `Perícia ${nome}`, valor: totalPericia(f, id) });
   const constante: Fonte = { nome: 'Constante da defesa', valor: 3 };
   switch (chave) {
@@ -138,8 +213,9 @@ function baseCombate(f: Ficha, chave: ChaveCombate): Fonte[] {
 }
 
 /**
- * Valor de combate da aba LUGAN (linhas 26-32): alvo da fórmula + fontes nomeadas + bônus de fiéis.
- * A composição lista cada parcela; a soma dela é o total. Os dados são os do nível mais os extras.
+ * Valor de combate da aba LUGAN (linhas 26-32): alvo da fórmula + parcelas derivadas dos poderes + fontes
+ * manuais + bônus de fiéis. A composição lista cada parcela, nessa ordem; a soma dela é o total.
+ * Os dados são os do nível mais os extras.
  */
 export function combate(
   f: Ficha,
@@ -147,7 +223,7 @@ export function combate(
 ): { total: number; composicao: Fonte[]; dados: number; fieisBonus: number } {
   const entrada = f.combate[chave];
   const fieisBonus = bonusFieis(f.fieis, entrada.fieisPor);
-  const composicao = [...baseCombate(f, chave), ...entrada.fontes];
+  const composicao = [...baseCombate(f, chave), ...fontesDerivadasCombate(f, chave), ...entrada.fontes];
   if (fieisBonus > 0) composicao.push({ nome: 'Fiéis', valor: fieisBonus });
   return {
     total: somaFontes(composicao),
@@ -167,14 +243,15 @@ export interface ResultadoDano {
 
 /**
  * Dano: Nd × total do atributo + bônus fixo. Os dados são os do nível, os extras do dano e, se
- * houver golpe, os dados de dano dele. Os fiéis somam +1 por `fieisPor` ao bônus fixo mostrado no texto.
+ * houver golpe, os dados de dano dele. O bônus fixo soma as parcelas dos poderes e as manuais; os fiéis
+ * somam +1 por `fieisPor` a ele no texto.
  */
 export function dano(f: Ficha, golpeEspecial?: GolpeEspecial): ResultadoDano {
   const d = f.dano;
   const dados =
-    dadosPorNivel(f.identidade.nivel) + somaFontes(d.dadosExtras) + (golpeEspecial?.dadosDanoExtras ?? 0);
-  const multiplicador = totalAtributo(f.atributos[d.atributo]);
-  const fixo = somaFontes(d.fixos);
+    dadosPorNivel(f.identidade.nivel) + somaFontes(d.dadosExtras) + (golpeEspecial ? dadosDoGolpe(f, golpeEspecial).dano : 0);
+  const multiplicador = totalAtributoFicha(f, d.atributo);
+  const fixo = somaFontes(fontesDerivadasDano(f)) + somaFontes(d.fixos);
   const fieisBonus = bonusFieis(f.fieis, d.fieisPor);
   return { dados, multiplicador, fixo, fieisBonus, texto: `${dados}d×${multiplicador} +${fixo + fieisBonus}` };
 }
@@ -186,7 +263,7 @@ export function golpe(
 ): { ataqueDados: number; ataqueTotal: number; dano: ResultadoDano } {
   const ataque = combate(f, 'ataqueArmaBranca');
   return {
-    ataqueDados: ataque.dados + g.dadosAtaqueExtras,
+    ataqueDados: ataque.dados + dadosDoGolpe(f, g).ataque,
     ataqueTotal: ataque.total,
     dano: dano(f, g),
   };
@@ -230,7 +307,7 @@ export function formatarRolagem(dados: number, bonus: number): string {
 
 /** Poder que entra no painel de sessão e na aba Batalha como consumível: tem usos por dia ou custo de fadiga e não foi removido. */
 export function poderUsavel(p: Poder): boolean {
-  return p.tipo !== 'removido' && (p.usosPorDia !== undefined || p.custoFadiga !== undefined);
+  return p.tipo !== 'removido' && (usosPorDiaDoPoder(p) !== undefined || p.custoFadiga !== undefined);
 }
 
 /** Poder exibido nas absorções e proteções: marcado à mão ou, sem marca, do tipo defensivo ou item; removido nunca. */
@@ -255,7 +332,7 @@ export interface UsoPoder {
 /** Usos de um poder na sessão atual. */
 export function usoDoPoder(p: Poder, sessao: Sessao): UsoPoder {
   const usados = sessao.usosPoder[p.id] ?? 0;
-  const limite = p.usosPorDia ?? null;
+  const limite = usosPorDiaDoPoder(p) ?? null;
   return {
     id: p.id,
     nome: p.nome,
@@ -323,7 +400,7 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
   const poderDe = (id: string) => f.poderes.find((p) => p.id === id);
   const velocidade = poderDe('velocidade_divina');
   const usoOuNulo = (p: Poder | undefined): UsoPoder | null =>
-    p && poderUsavel(p) && p.usosPorDia !== undefined ? usoDoPoder(p, sessao) : null;
+    p && poderUsavel(p) && usosPorDiaDoPoder(p) !== undefined ? usoDoPoder(p, sessao) : null;
 
   const golpes = f.golpes.map((g): GolpeBatalha => {
     const r = golpe(f, g);
@@ -468,10 +545,82 @@ function completarBatalha(f: FichaV2Anterior): Ficha {
   };
 }
 
+/** Retira da lista as fontes manuais com o nome dado; devolve a soma retirada, ou nulo se não havia nenhuma. */
+function retirarFontes(fontes: Fonte[], nome: string): number | null {
+  const achadas = fontes.filter((x) => x.poderId === undefined && x.nome.trim() === nome.trim());
+  if (achadas.length === 0) return null;
+  const restantes = fontes.filter((x) => !achadas.includes(x));
+  fontes.splice(0, fontes.length, ...restantes);
+  return somaFontes(achadas);
+}
+
+/**
+ * Injeta a escala do livro no poder conhecido (por id) e converte em derivadas as fontes manuais que levam o
+ * nome dele, preservando todos os totais: a diferença entre o valor salvo e coeficiente × nível vira uma fonte
+ * manual "Ajuste do mestre (poder)". Só entra na escala o que corresponde a algo já salvo na ficha (uma fonte
+ * com o nome do poder, os usos iguais ao nível, o golpe de mesmo id); o restante ficaria somado em dobro.
+ */
+function converterPoder(f: Ficha, p: Poder): void {
+  const semente = escalaPadrao(p.id);
+  if (!semente) return;
+  const nivel = nivelDoPoder(p);
+  const contribui = (coeficiente: number): number => (p.tipo === 'removido' ? 0 : coeficiente * nivel);
+  const escala: EscalaPoder = {};
+  const converter = (fontes: Fonte[], coeficiente: number): boolean => {
+    const antes = retirarFontes(fontes, p.nome);
+    if (antes === null) return false;
+    const diferenca = antes - contribui(coeficiente);
+    if (diferenca !== 0) fontes.push({ nome: `Ajuste do mestre (${p.nome})`, valor: diferenca });
+    return true;
+  };
+
+  for (const chave of Object.keys(f.combate) as ChaveCombate[]) {
+    const coeficiente = semente.ataquePorNivel?.[chave];
+    if (coeficiente !== undefined && converter(f.combate[chave].fontes, coeficiente)) {
+      escala.ataquePorNivel = { ...escala.ataquePorNivel, [chave]: coeficiente };
+    }
+  }
+  if (semente.danoPorNivel !== undefined && converter(f.dano.fixos, semente.danoPorNivel)) {
+    escala.danoPorNivel = semente.danoPorNivel;
+  }
+  const porAtributo = semente.atributoPorNivel;
+  if (porAtributo && converter(f.atributos[porAtributo.atributo].extras, porAtributo.valor)) {
+    escala.atributoPorNivel = { ...porAtributo };
+  }
+  if (semente.pvPorNivel !== undefined && converter(f.pvExtras, semente.pvPorNivel)) {
+    escala.pvPorNivel = semente.pvPorNivel;
+  }
+  if (semente.usosPorNivel !== undefined && p.nivel !== null && p.usosPorDia === semente.usosPorNivel * p.nivel) {
+    escala.usosPorNivel = semente.usosPorNivel;
+    delete p.usosPorDia;
+  }
+  const golpeDoPoder = f.golpes.find((g) => g.id === p.id);
+  if (golpeDoPoder) {
+    if (semente.dadosAtaquePorNivel !== undefined) {
+      escala.dadosAtaquePorNivel = semente.dadosAtaquePorNivel;
+      golpeDoPoder.dadosAtaqueExtras -= contribui(semente.dadosAtaquePorNivel);
+    }
+    if (semente.dadosDanoPorNivel !== undefined) {
+      escala.dadosDanoPorNivel = semente.dadosDanoPorNivel;
+      golpeDoPoder.dadosDanoExtras -= contribui(semente.dadosDanoPorNivel);
+    }
+  }
+  if (semente.fieisPorNivel !== undefined) escala.fieisPorNivel = semente.fieisPorNivel;
+
+  if (Object.keys(escala).length > 0) p.escala = escala;
+}
+
+/** Poderes já com `escala` (mesmo vazia) são respeitados; os conhecidos sem ela recebem a semente. */
+function aplicarEscalas(f: Ficha): Ficha {
+  for (const p of f.poderes) if (p.escala === undefined) converterPoder(f, p);
+  return f;
+}
+
 /**
  * Devolve uma ficha na versão 2. A versão 1 é convertida (regras padrão do contrato: bônus 47 no
  * nível 41, então um bônus de nível antigo dispara o alerta de correção); a versão 2 é copiada e
- * recebe os valores padrão da aba Batalha quando ausentes.
+ * recebe os valores padrão da aba Batalha e a escala por nível dos poderes conhecidos quando ausentes (as
+ * fontes salvas que levam o nome do poder viram parcelas derivadas, sem mudar nenhum total).
  * Não valida a estrutura: para conteúdo externo, use `importarJson`.
  */
 export function migrarFicha(json: unknown): Ficha {
@@ -479,7 +628,7 @@ export function migrarFicha(json: unknown): Ficha {
     throw new Error('Ficha inválida: o conteúdo deve ser um objeto.');
   }
   const versao = (json as { versao?: unknown }).versao;
-  if (versao === 2) return completarBatalha(structuredClone(json as FichaV2Anterior));
+  if (versao === 2) return aplicarEscalas(completarBatalha(structuredClone(json as FichaV2Anterior)));
   if (versao === 1) return migrarV1(structuredClone(json as FichaV1));
   throw new Error(`Ficha inválida: versão não suportada (${String(versao)}); esperadas 1 ou 2.`);
 }

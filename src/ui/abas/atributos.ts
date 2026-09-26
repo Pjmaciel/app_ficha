@@ -1,5 +1,7 @@
 // Aba Atributos: total, bônus de nível, pontos e extras nomeados, com subir de nível.
-import { baseAtributo, diferencaAtributos, pontosRestantes, subirNivel, totalAtributo } from '../../engine';
+import {
+  baseAtributo, diferencaAtributos, fontesDerivadasAtributo, pontosRestantes, subirNivel, totalAtributoFicha,
+} from '../../engine';
 import { ATRIBUTOS, ROTULO_ATRIBUTO, editorFontes } from '../componentes';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, entradaNumero, h } from '../dom';
@@ -36,7 +38,7 @@ export function abaAtributos(ctx: Contexto): HTMLElement {
     const total = h('strong', { class: 'valor-tabela' });
     const base = h('span', { class: 'detalhe' });
     ctx.ligar(() => {
-      definirTexto(total, String(totalAtributo(f().atributos[id])));
+      definirTexto(total, String(totalAtributoFicha(f(), id)));
       definirTexto(base, `base ${baseAtributo(f().atributos[id])}`);
     });
     const bonusNivel = entradaNumero(f().atributos[id].bonusNivel, (v) => { f().atributos[id].bonusNivel = v ?? 0; ctx.mudou(); });
@@ -47,7 +49,10 @@ export function abaAtributos(ctx: Contexto): HTMLElement {
       h('td', { 'data-rotulo': 'Bônus de nível' }, campo(`${ROTULO_ATRIBUTO[id]}: bônus de nível`, bonusNivel, true)),
       h('td', { 'data-rotulo': 'Pontos' }, campo(`${ROTULO_ATRIBUTO[id]}: pontos`, pontos, true)),
       h('td', { 'data-rotulo': 'Extras nomeados' },
-        editorFontes(ctx, f().atributos[id].extras, { titulo: `Extras de ${ROTULO_ATRIBUTO[id]}`, adicionar: 'Adicionar extra', vazio: 'Sem extras.' })));
+        editorFontes(ctx, f().atributos[id].extras, {
+          titulo: `Extras de ${ROTULO_ATRIBUTO[id]}`, adicionar: 'Adicionar extra', vazio: 'Sem extras.',
+          derivadas: () => fontesDerivadasAtributo(f(), id),
+        })));
   });
 
   return h('div', {},

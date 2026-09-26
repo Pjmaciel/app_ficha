@@ -1,5 +1,5 @@
 // Aba Identidade: dados do personagem, níveis, pontos de vida, experiência e regras.
-import { pvBase, pvTotal } from '../../engine';
+import { fontesDerivadasPv, pvBase, pvTotal } from '../../engine';
 import type { Ficha } from '../../model/types';
 import { editorFontes } from '../componentes';
 import type { Contexto } from '../contexto';
@@ -48,7 +48,10 @@ export function abaIdentidade(ctx: Contexto): HTMLElement {
       h('h3', {}, 'Pontos de vida'),
       h('div', { class: 'campos' }, numeroId('PV por ponto de Fortitude', 'basePv', 0)),
       h('p', {}, 'PV base (PV por ponto × Fortitude): ', pvBaseTexto),
-      editorFontes(ctx, f().pvExtras, { titulo: 'PV extras', adicionar: 'Adicionar PV extra', cabecalho: true, vazio: 'Nenhum PV extra.' }),
+      editorFontes(ctx, f().pvExtras, {
+        titulo: 'PV extras', adicionar: 'Adicionar PV extra', cabecalho: true, vazio: 'Nenhum PV extra manual.',
+        derivadas: () => fontesDerivadasPv(f()),
+      }),
       h('p', {}, 'PV total: ', pvTotalTexto)),
     h('section', { class: 'cartao' },
       h('h3', {}, 'Regras da ficha'),

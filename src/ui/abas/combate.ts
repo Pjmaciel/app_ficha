@@ -1,5 +1,7 @@
 // Aba Combate: fontes nomeadas, dados extras e regra de fiéis de cada valor, dano e golpes especiais.
-import { combate, dano } from '../../engine';
+import {
+  combate, dadosDoGolpe, dano, fontesDerivadasCombate, fontesDerivadasDano,
+} from '../../engine';
 import type { AtributoId, EntradaCombate } from '../../model/types';
 import {
   ATRIBUTOS, CHAVES_COMBATE, ROTULO_ATRIBUTO, ROTULO_COMBATE, editorFontes, rolagem,
@@ -25,7 +27,10 @@ function cartaoEntrada(ctx: Contexto, chave: keyof typeof ROTULO_COMBATE): HTMLE
   return h('section', { class: 'cartao' },
     h('h3', {}, ROTULO_COMBATE[chave]),
     resultado,
-    editorFontes(ctx, entrada.fontes, { titulo: `Fontes de ${ROTULO_COMBATE[chave]}`, adicionar: 'Adicionar fonte', cabecalho: true, vazio: 'Sem fontes.' }),
+    editorFontes(ctx, entrada.fontes, {
+      titulo: `Fontes de ${ROTULO_COMBATE[chave]}`, adicionar: 'Adicionar fonte manual', cabecalho: true, vazio: 'Sem fontes manuais.',
+      derivadas: () => fontesDerivadasCombate(f(), chave),
+    }),
     editorFontes(ctx, entrada.dadosExtras, { titulo: `Dados extras de ${ROTULO_COMBATE[chave]}`, adicionar: 'Adicionar dado extra', cabecalho: true, vazio: 'Sem dados extras.' }),
     campoFieisPor(ctx, entrada));
 }
@@ -43,7 +48,10 @@ function cartaoDano(ctx: Contexto): HTMLElement {
     resultado,
     campo('Atributo do multiplicador', atributo),
     editorFontes(ctx, d.dadosExtras, { titulo: 'Dados extras de dano', adicionar: 'Adicionar dado extra', cabecalho: true, vazio: 'Sem dados extras.' }),
-    editorFontes(ctx, d.fixos, { titulo: 'Bônus fixos de dano', adicionar: 'Adicionar bônus fixo', cabecalho: true, vazio: 'Sem bônus fixos.' }),
+    editorFontes(ctx, d.fixos, {
+      titulo: 'Bônus fixos de dano', adicionar: 'Adicionar bônus fixo manual', cabecalho: true, vazio: 'Sem bônus fixos manuais.',
+      derivadas: () => fontesDerivadasDano(f()),
+    }),
     campoFieisPor(ctx, d));
 }
 
@@ -56,11 +64,21 @@ function secaoGolpes(ctx: Contexto): HTMLElement {
     if (f().golpes.length === 0) lista.append(h('p', { class: 'vazio' }, 'Nenhum golpe especial.'));
     f().golpes.forEach((g, i) => {
       const nome = entradaTexto(g.nome, (v) => { g.nome = v; ctx.mudou(); }, 'Nome do golpe');
+      const total = h('p', { class: 'detalhe' });
+      ctx.ligar(() => {
+        const d = dadosDoGolpe(f(), g);
+        const poder = f().poderes.find((p) => p.id === g.id);
+        const origem = poder?.escala?.dadosAtaquePorNivel !== undefined || poder?.escala?.dadosDanoPorNivel !== undefined
+          ? ` (ajuste fixo somado à escala do poder ${poder.nome}, nível ${poder.nivel ?? 0})`
+          : '';
+        definirTexto(total, `Total: +${d.ataque} dados de ataque e +${d.dano} de dano${origem}.`);
+      });
       lista.append(h('article', { class: 'cartao golpe-editor' },
         h('div', { class: 'campos' },
           campo('Nome do golpe', nome),
-          campo('Dados extras de ataque', entradaNumero(g.dadosAtaqueExtras, (v) => { g.dadosAtaqueExtras = v ?? 0; ctx.mudou(); })),
-          campo('Dados extras de dano', entradaNumero(g.dadosDanoExtras, (v) => { g.dadosDanoExtras = v ?? 0; ctx.mudou(); }))),
+          campo('Dados extras de ataque (ajuste fixo)', entradaNumero(g.dadosAtaqueExtras, (v) => { g.dadosAtaqueExtras = v ?? 0; ctx.mudou(); })),
+          campo('Dados extras de dano (ajuste fixo)', entradaNumero(g.dadosDanoExtras, (v) => { g.dadosDanoExtras = v ?? 0; ctx.mudou(); }))),
+        total,
         h('button', {
           type: 'button', class: 'remover',
           onclick: () => {
@@ -77,7 +95,7 @@ function secaoGolpes(ctx: Contexto): HTMLElement {
 
   return h('section', {},
     h('h2', {}, 'Golpes especiais'),
-    h('p', { class: 'detalhe' }, 'Os dados extras somam aos dados do ataque com arma branca e do dano básico. Cada golpe aparece no Resumo de Combate.'),
+    h('p', { class: 'detalhe' }, 'Os dados extras (ajuste fixo) somam à escala do poder de mesmo id, aos dados do ataque com arma branca e do dano básico. Cada golpe aparece no Resumo de Combate.'),
     lista,
     h('button', {
       type: 'button',
@@ -93,7 +111,7 @@ function secaoGolpes(ctx: Contexto): HTMLElement {
 export function abaCombate(ctx: Contexto): HTMLElement {
   return h('div', {},
     h('p', { class: 'detalhe' },
-      'Cada valor é o alvo da fórmula (perícia ou atributo) mais as fontes nomeadas e o bônus de fiéis. Os dados são os do nível mais os extras.'),
+      'Cada valor é o alvo da fórmula (perícia ou atributo) mais as parcelas derivadas de poderes (somente leitura; edite o nível e a escala na aba Poderes), as fontes manuais e o bônus de fiéis. Os dados são os do nível mais os extras.'),
     h('div', { class: 'grade grade-larga' }, ...CHAVES_COMBATE.map((c) => cartaoEntrada(ctx, c)), cartaoDano(ctx)),
     secaoGolpes(ctx));
 }

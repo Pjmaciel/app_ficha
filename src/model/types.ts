@@ -1,7 +1,18 @@
 export type AtributoId = 'forca' | 'agilidade' | 'reflexos' | 'fortitude' | 'distancia' | 'mental';
 
-/** Origem nomeada de um bônus (ex.: "Lugan da Batalha", 150). */
-export interface Fonte { nome: string; valor: number }
+/**
+ * Origem nomeada de um bônus (ex.: "Outros", 120). Com `poderId`, a parcela é derivada de um poder
+ * (escala × nível): o motor a recalcula e ela não é editada diretamente; a ficha guarda só as manuais.
+ */
+export interface Fonte { nome: string; valor: number; poderId?: string }
+
+/** Parcela derivada de um poder: valor = coeficiente × nível do poder; o motor a gera, nunca fica salva na ficha. */
+export interface FonteDerivada extends Fonte {
+  poderId: string;
+  nivel: number;
+  /** Bônus por nível de poder (a escala). */
+  coeficiente: number;
+}
 
 /** base = bonusNivel + pontos; total = base + soma(extras). */
 export interface Atributo { bonusNivel: number; pontos: number; extras: Fonte[] }
@@ -11,6 +22,31 @@ export interface Pericia { id: string; nome: string; grupo: GrupoPericia; atribu
 // total = inicial + atributos[atributo].total + graduacao
 
 export type TipoPoder = 'passivo' | 'ativo' | 'defensivo' | 'item' | 'removido';
+export type ChaveCombate = 'ataqueArmaBranca' | 'ataqueMagico' | 'ataqueLuta' | 'ataqueArmaFogo' | 'esquivar' | 'bloquear' | 'aparar';
+
+/**
+ * Efeito numérico de um poder por ponto (nível). O motor multiplica cada coeficiente pelo `nivel` do poder
+ * e soma o resultado às fontes manuais; poder do tipo `removido` não contribui.
+ */
+export interface EscalaPoder {
+  /** Bônus por nível em cada chave de combate (ataques e defesas). */
+  ataquePorNivel?: Partial<Record<ChaveCombate, number>>;
+  /** Parcela fixa no fim do dano, por nível. */
+  danoPorNivel?: number;
+  /** Bônus permanente em um atributo, por nível (entra como extra do atributo). */
+  atributoPorNivel?: { atributo: AtributoId; valor: number };
+  /** PV extras por nível. */
+  pvPorNivel?: number;
+  /** Usos por dia: `usosPorNivel × nível`; quando definido, vale no lugar de `Poder.usosPorDia`. */
+  usosPorNivel?: number;
+  /** Fiéis por nível (informativo: sugere o campo `Ficha.fieis`). */
+  fieisPorNivel?: number;
+  /** Golpe de mesmo `id`: dados extras de ataque por nível, somados a `dadosAtaqueExtras`. */
+  dadosAtaquePorNivel?: number;
+  /** Golpe de mesmo `id`: dados extras de dano por nível, somados a `dadosDanoExtras`. */
+  dadosDanoPorNivel?: number;
+}
+
 export interface Poder {
   id: string;
   nome: string;
@@ -21,15 +57,16 @@ export interface Poder {
   usosPorDia?: number;
   /** Mostra o poder na aba Batalha; ausente, vale true para os tipos defensivo e item. Poder removido nunca aparece. */
   mostrarNaBatalha?: boolean;
+  /** Escala numérica por nível; ausente, o poder não gera parcelas derivadas. */
+  escala?: EscalaPoder;
 }
 
 export type Elemento = 'fogo' | 'agua' | 'ar' | 'terra' | 'luz' | 'trevas';
 /** valor = real ? nivel * 8 : nivel; vários elementos podem ser reais. */
 export interface Tsu { elemento: Elemento; nivel: number; real: boolean }
 
-export type ChaveCombate = 'ataqueArmaBranca' | 'ataqueMagico' | 'ataqueLuta' | 'ataqueArmaFogo' | 'esquivar' | 'bloquear' | 'aparar';
 export interface EntradaCombate {
-  /** Bônus passivos nomeados; a soma é a coluna E da planilha. */
+  /** Bônus manuais nomeados (os de poderes com escala são derivados pelo motor e não ficam aqui). */
   fontes: Fonte[];
   /** Dados extras de ataque/defesa além dos dados por nível (ex.: Jikar +3). */
   dadosExtras: Fonte[];
@@ -42,15 +79,17 @@ export interface Dano {
   atributo: AtributoId;
   /** Dados extras de dano (ex.: Jikar +1). */
   dadosExtras: Fonte[];
-  /** Bônus fixo nomeado no fim do dano (ex.: Lugan da Batalha 60, Campeão 40, Lugan Completo 20). */
+  /** Bônus fixo manual no fim do dano (os de poderes com escala são derivados pelo motor). */
   fixos: Fonte[];
   /** +1 por N fiéis (400). */
   fieisPor: number | null;
 }
 
 /**
- * Ex.: Golpe Devastador de Lugan: +3 dados de ataque e +2 de dano. O poder de mesmo `id` traz os pontos
- * (nível) e os usos por dia; `pressaoPorPonto` (km² por ponto) alimenta a pressão exibida na aba Batalha.
+ * Ex.: Golpe Devastador de Lugan: +3 dados de ataque e +2 de dano no nível 3. O poder de mesmo `id` traz os
+ * pontos (nível), os usos por dia e a escala de dados (`dadosAtaquePorNivel`/`dadosDanoPorNivel`); os campos
+ * `dadosAtaqueExtras` e `dadosDanoExtras` são o ajuste fixo somado a essa escala (Golpe Devastador: 0 e −1).
+ * `pressaoPorPonto` (km² por ponto) alimenta a pressão exibida na aba Batalha.
  */
 export interface GolpeEspecial {
   id: string;
@@ -91,7 +130,7 @@ export interface Ficha {
   regras: Regras;
   atributos: Record<AtributoId, Atributo>;
   pericias: Pericia[];
-  /** PV extras nomeados (ex.: Proteção Divina +500). */
+  /** PV extras manuais (os de poderes com escala, como Proteção Divina, são derivados pelo motor). */
   pvExtras: Fonte[];
   combate: Record<ChaveCombate, EntradaCombate>;
   dano: Dano;

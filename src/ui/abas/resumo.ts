@@ -1,8 +1,11 @@
 // Aba Resumo de Combate: tudo o que se consulta durante a luta, pronto e com a composição de cada valor.
-import { combate, dadosPorNivel, dano, golpe, totalAtributo } from '../../engine';
+import {
+  combate, dadosDoGolpe, dadosPorNivel, dano, fieisSugeridos, fontesDerivadasAtributo, fontesDerivadasDano, golpe,
+  totalAtributoFicha,
+} from '../../engine';
 import type { ChaveCombate, Ficha, GolpeEspecial } from '../../model/types';
 import {
-  ROTULO_ATRIBUTO, ROTULO_COMBATE, blocoComposicao, comSinal, rolagem, type Linha,
+  ROTULO_ATRIBUTO, ROTULO_COMBATE, blocoComposicao, comSinal, linhaDaFonte, rolagem, type Linha,
 } from '../componentes';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, entradaNumero, h } from '../dom';
@@ -21,10 +24,10 @@ function linhasDados(f: Ficha, extras: { nome: string; valor: number }[], golpeE
 
 export function linhasCombate(f: Ficha, chave: ChaveCombate, golpeEspecial?: GolpeEspecial): Linha[] {
   const c = combate(f, chave);
-  const golpeExtra = golpeEspecial ? { nome: golpeEspecial.nome, valor: golpeEspecial.dadosAtaqueExtras } : undefined;
+  const golpeExtra = golpeEspecial ? { nome: golpeEspecial.nome, valor: dadosDoGolpe(f, golpeEspecial).ataque } : undefined;
   return [
     ...linhasDados(f, f.combate[chave].dadosExtras, golpeExtra),
-    ...c.composicao.map((x) => linhaFonte(x.nome, x.valor)),
+    ...c.composicao.map((x) => linhaDaFonte(x)),
     { rotulo: 'Bônus total', valor: comSinal(c.total) },
   ];
 }
@@ -35,13 +38,13 @@ export function linhasDano(f: Ficha, golpeEspecial?: GolpeEspecial): Linha[] {
   const attr = f.atributos[d.atributo];
   const linhas: Linha[] = linhasDados(
     f, d.dadosExtras,
-    golpeEspecial ? { nome: golpeEspecial.nome, valor: golpeEspecial.dadosDanoExtras } : undefined,
+    golpeEspecial ? { nome: golpeEspecial.nome, valor: dadosDoGolpe(f, golpeEspecial).dano } : undefined,
   );
-  linhas.push({ rotulo: `Multiplicador: ${ROTULO_ATRIBUTO[d.atributo]}`, valor: String(totalAtributo(attr)) });
+  linhas.push({ rotulo: `Multiplicador: ${ROTULO_ATRIBUTO[d.atributo]}`, valor: String(totalAtributoFicha(f, d.atributo)) });
   linhas.push({ rotulo: 'Bônus de nível', valor: String(attr.bonusNivel), subitem: true });
   linhas.push({ rotulo: 'Pontos', valor: String(attr.pontos), subitem: true });
-  for (const e of attr.extras) linhas.push({ ...linhaFonte(e.nome, e.valor), subitem: true });
-  for (const x of d.fixos) linhas.push(linhaFonte(`Fixo: ${x.nome}`, x.valor));
+  for (const e of [...fontesDerivadasAtributo(f, d.atributo), ...attr.extras]) linhas.push({ ...linhaDaFonte(e), subitem: true });
+  for (const x of [...fontesDerivadasDano(f), ...d.fixos]) linhas.push(linhaDaFonte(x, 'Fixo: '));
   if (r.fieisBonus > 0) linhas.push(linhaFonte(`Fiéis (+1 a cada ${d.fieisPor})`, r.fieisBonus));
   linhas.push({ rotulo: 'Dano', valor: r.texto });
   return linhas;
@@ -77,9 +80,14 @@ function textoFieis(fieis: number, por: number | null, bonus: number): string {
 
 function secaoFieis(ctx: Contexto): HTMLElement {
   const f = ctx.ficha;
-  const entrada = entradaNumero(f().fieis, (v) => { f().fieis = Math.max(0, v ?? 0); ctx.mudou(); }, { min: 0 });
+  const entrada = entradaNumero(f().fieis > 0 ? f().fieis : null, (v) => { f().fieis = Math.max(0, v ?? 0); ctx.mudou(); }, { min: 0, aceitaVazio: true });
   const calculo = h('p', { class: 'detalhe' });
+  const sugestao = h('p', { class: 'detalhe' });
   ctx.ligar(() => {
+    const sugeridos = fieisSugeridos(f());
+    entrada.placeholder = sugeridos === null ? '0' : `sugestão: ${sugeridos.toLocaleString('pt-BR')}`;
+    definirTexto(sugestao, sugeridos === null ? '' : `Sugestão pelos poderes: ${sugeridos.toLocaleString('pt-BR')} fiéis (fiéis por nível × nível do poder).`);
+    sugestao.hidden = sugeridos === null;
     const n = f().fieis;
     const partes = [
       `Ataque e aparar: ${textoFieis(n, f().combate.ataqueArmaBranca.fieisPor, combate(f(), 'ataqueArmaBranca').fieisBonus)}`,
@@ -93,7 +101,8 @@ function secaoFieis(ctx: Contexto): HTMLElement {
     h('h3', {}, 'Fiéis'),
     campo('Fiéis vinculados', entrada),
     h('p', { class: 'detalhe' },
-      'Os bônus passivos da planilha já incluem os fiéis atuais; este campo começa em 0 e soma o bônus por cima.'),
+      'Os bônus passivos da planilha já incluem os fiéis atuais; este campo começa vazio (0) e soma o bônus por cima.'),
+    sugestao,
     calculo);
 }
 

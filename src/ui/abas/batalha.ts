@@ -1,7 +1,7 @@
 // Aba Batalha: tudo o que se consulta durante a luta, em uma tela só e com valores prontos.
 // Ordem: Minha rodada, Ataques, Defesas, Absorções e proteções, Quando for atacado e Lembretes.
 // A estrutura (quantos cartões) vem da ficha ao abrir a aba; os valores são refeitos a cada mudança.
-import { poderUsavel, resumoBatalha, usoDoPoder, type ResumoBatalha } from '../../engine';
+import { poderUsavel, resumoBatalha, usoDoPoder, usosPorDiaDoPoder, type ResumoBatalha } from '../../engine';
 import type { ChaveCombate, Poder } from '../../model/types';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, definirValor, entradaNumero, h, inteiro } from '../dom';
@@ -151,7 +151,7 @@ function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTM
         linhas: () => linhasDano(f(), atual()),
       })),
     pressao,
-    f().poderes.some((p) => p.id === atual().id && poderUsavel(p) && p.usosPorDia !== undefined)
+    f().poderes.some((p) => p.id === atual().id && poderUsavel(p) && usosPorDiaDoPoder(p) !== undefined)
       ? controleUso(ctx, atual().id)
       : null);
 }

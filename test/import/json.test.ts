@@ -3,6 +3,7 @@ import type { Ficha } from '../../src/model/types';
 import alexsander from '../../src/data/alexsander.json';
 import { alertaBonusNivel, totalAtributo } from '../../src/engine';
 import { exportarJson, importarJson } from '../../src/import/json';
+import antiga from '../fixtures/alexsander-v2-sem-escala.json';
 
 const ficha = alexsander as Ficha;
 
@@ -127,6 +128,45 @@ describe('importarJson e os textos da aba Batalha', () => {
     expect(() => importarJson(JSON.stringify({ ...ficha, poderes }))).toThrow(/mostrarNaBatalha/);
     const golpes = [{ ...ficha.golpes[0], pressaoPorPonto: '8' }];
     expect(() => importarJson(JSON.stringify({ ...ficha, golpes }))).toThrow(/pressaoPorPonto/);
+  });
+});
+
+describe('importarJson e a escala por nível dos poderes', () => {
+  const comEscala = (escala: unknown) => JSON.stringify({ ...ficha, poderes: [{ ...ficha.poderes[0], escala }, ...ficha.poderes.slice(1)] });
+
+  it('a ficha salva antes da escala é migrada: as fontes viram parcelas derivadas e os totais não mudam', () => {
+    const f = importarJson(JSON.stringify(antiga));
+    expect(f).toStrictEqual(ficha);
+  });
+
+  it('aceita escala completa e a preserva na ida e volta', () => {
+    const escala = {
+      ataquePorNivel: { ataqueMagico: 3 }, danoPorNivel: 2, atributoPorNivel: { atributo: 'mental', valor: 4 },
+      pvPorNivel: 5, usosPorNivel: 1, fieisPorNivel: 100, dadosAtaquePorNivel: 1, dadosDanoPorNivel: 1,
+    };
+    const f = importarJson(comEscala(escala));
+    expect(f.poderes[0].escala).toEqual(escala);
+    expect(importarJson(exportarJson(f))).toStrictEqual(f);
+  });
+
+  it('respeita a escala vazia (não semeia de novo)', () => {
+    expect(importarJson(comEscala({})).poderes[0].escala).toEqual({});
+  });
+
+  it('rejeita escala inválida', () => {
+    expect(() => importarJson(comEscala('x'))).toThrow(/escala/);
+    expect(() => importarJson(comEscala({ danoPorNivel: '20' }))).toThrow(/danoPorNivel/);
+    expect(() => importarJson(comEscala({ ataquePorNivel: { voar: 1 } }))).toThrow(/ataquePorNivel/);
+    expect(() => importarJson(comEscala({ ataquePorNivel: { esquivar: 'a' } }))).toThrow(/ataquePorNivel/);
+    expect(() => importarJson(comEscala({ atributoPorNivel: { atributo: 'sorte', valor: 1 } }))).toThrow(/atributoPorNivel/);
+    expect(() => importarJson(comEscala({ atributoPorNivel: { atributo: 'forca' } }))).toThrow(/atributoPorNivel/);
+    expect(() => importarJson(comEscala({ usosPorNivel: null }))).toThrow(/usosPorNivel/);
+  });
+
+  it('rejeita poderId que não é texto em uma fonte', () => {
+    const combate = structuredClone(ficha.combate);
+    combate.esquivar.fontes.push({ nome: 'X', valor: 1, poderId: 3 as unknown as string });
+    expect(() => importarJson(JSON.stringify({ ...ficha, combate }))).toThrow(/fonte inválida/);
   });
 });
 

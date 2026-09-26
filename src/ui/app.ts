@@ -3,7 +3,7 @@
 // `ligar`); os campos nunca são recriados durante a digitação, então o foco não se perde.
 import {
   alertaBonusNivel, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
-  usoDoPoder,
+  usoDoPoder, usosPorDiaDoPoder,
 } from '../engine';
 import type { Ficha } from '../model/types';
 import { abaAtributos } from './abas/atributos';
@@ -138,7 +138,7 @@ export function iniciar(raiz: HTMLElement): void {
       listaUsos.append(h('li', {},
         h('span', { class: 'nome-uso' }, p.nome || 'Sem nome'),
         h('span', { class: 'detalhe' },
-          `${usos}${p.usosPorDia !== undefined ? ` / ${p.usosPorDia}` : ''} usos`,
+          `${usos}${usosPorDiaDoPoder(p) !== undefined ? ` / ${usosPorDiaDoPoder(p)}` : ''} usos`,
           custo > 0 ? ` · custo ${custo} de fadiga` : ''),
         h('button', {
           type: 'button', disabled: esgotado, 'data-uso': p.id, 'aria-label': `Usar ${p.nome || 'poder'}`,

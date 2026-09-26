@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Ficha } from '../../src/model/types';
 import alexsander from '../../src/data/alexsander.json';
-import { combate, dano, pontosRestantes, pvTotal, totalAtributo } from '../../src/engine';
+import { combate, dano, migrarFicha, pontosRestantes, pvTotal, totalAtributoFicha } from '../../src/engine';
 import { importarXlsx } from '../../src/import/xlsx';
 
 function carregar(): Ficha {
@@ -14,8 +14,13 @@ function carregar(): Ficha {
 describe('importarXlsx', () => {
   const ficha = carregar();
 
-  it('reproduz exatamente o JSON de referência do Alexsander', () => {
-    expect(ficha).toStrictEqual(alexsander);
+  it('reproduz exatamente o JSON de referência do Alexsander, depois da migração que semeia as escalas dos poderes', () => {
+    expect(migrarFicha(ficha)).toStrictEqual(alexsander);
+  });
+
+  it('o importador não semeia escalas: os poderes saem sem escala e as fontes continuam nomeadas', () => {
+    expect(ficha.poderes.every((p) => p.escala === undefined)).toBe(true);
+    expect(ficha.combate.ataqueArmaBranca.fontes.map((x) => x.nome)).toContain('Lugan da Batalha');
   });
 
   it('é uma ficha versão 2 de nível 41 com pilar Justiça', () => {
@@ -51,7 +56,7 @@ describe('importarXlsx', () => {
     expect(combate(ficha, 'esquivar').total).toBe(540);
     expect(combate(ficha, 'bloquear').total).toBe(941);
     expect(combate(ficha, 'aparar').total).toBe(1094);
-    expect(totalAtributo(ficha.atributos.forca)).toBe(322);
+    expect(totalAtributoFicha(ficha, 'forca')).toBe(322);
     expect(pvTotal(ficha)).toBe(3404);
     expect(dano(ficha).texto).toBe('3d×322 +120');
   });

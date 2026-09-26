@@ -22,7 +22,12 @@
     "forca": {
       "bonusNivel": 47,
       "pontos": 215,
-      "extras": []
+      "extras": [
+        {
+          "nome": "Força das Montanhas Divinas",
+          "valor": 60
+        }
+      ]
     },
     "agilidade": {
       "bonusNivel": 47,
@@ -564,21 +569,30 @@
       "graduacao": 0
     }
   ],
-  "pvExtras": [],
+  "pvExtras": [
+    {
+      "nome": "Proteção Divina",
+      "valor": 500
+    }
+  ],
   "combate": {
     "ataqueArmaBranca": {
       "fontes": [
         {
+          "nome": "Lugan da Batalha",
+          "valor": 150
+        },
+        {
+          "nome": "Campeão do Combate Divino",
+          "valor": 140
+        },
+        {
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
           "nome": "Outros",
           "valor": 120
-        },
-        {
-          "nome": "Ajuste do mestre (Campeão do Combate Divino)",
-          "valor": -70
-        },
-        {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
         }
       ],
       "dadosExtras": [
@@ -592,8 +606,16 @@
     "ataqueMagico": {
       "fontes": [
         {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
+          "nome": "Lugan da Batalha",
+          "valor": 150
+        },
+        {
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
+          "nome": "Manipulador de Tsu Real",
+          "valor": 70
         }
       ],
       "dadosExtras": [],
@@ -602,12 +624,16 @@
     "ataqueLuta": {
       "fontes": [
         {
-          "nome": "Outros",
-          "valor": 70
+          "nome": "Lugan da Batalha",
+          "valor": 150
         },
         {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
+          "nome": "Outros",
+          "valor": 70
         }
       ],
       "dadosExtras": [],
@@ -616,12 +642,16 @@
     "ataqueArmaFogo": {
       "fontes": [
         {
-          "nome": "Outros",
-          "valor": 70
+          "nome": "Lugan da Batalha",
+          "valor": 150
         },
         {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
+          "nome": "Outros",
+          "valor": 70
         }
       ],
       "dadosExtras": [],
@@ -630,12 +660,16 @@
     "esquivar": {
       "fontes": [
         {
-          "nome": "Outros",
-          "valor": 120
+          "nome": "Lugan da Batalha",
+          "valor": 150
         },
         {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
+          "nome": "Outros",
+          "valor": 120
         }
       ],
       "dadosExtras": [
@@ -649,12 +683,16 @@
     "bloquear": {
       "fontes": [
         {
-          "nome": "Outros",
-          "valor": 120
+          "nome": "Lugan da Batalha",
+          "valor": 150
         },
         {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
+          "nome": "Outros",
+          "valor": 120
         }
       ],
       "dadosExtras": [
@@ -668,16 +706,20 @@
     "aparar": {
       "fontes": [
         {
+          "nome": "Lugan da Batalha",
+          "valor": 150
+        },
+        {
+          "nome": "Campeão do Combate Divino",
+          "valor": 140
+        },
+        {
+          "nome": "Lugan Completo",
+          "valor": 60
+        },
+        {
           "nome": "Outros",
           "valor": 120
-        },
-        {
-          "nome": "Ajuste do mestre (Campeão do Combate Divino)",
-          "valor": -70
-        },
-        {
-          "nome": "Ajuste do mestre (Lugan Completo)",
-          "valor": 30
         }
       ],
       "dadosExtras": [
@@ -699,12 +741,16 @@
     ],
     "fixos": [
       {
-        "nome": "Ajuste do mestre (Campeão do Combate Divino)",
-        "valor": -20
+        "nome": "Lugan da Batalha",
+        "valor": 60
       },
       {
-        "nome": "Ajuste do mestre (Lugan Completo)",
-        "valor": 10
+        "nome": "Campeão do Combate Divino",
+        "valor": 40
+      },
+      {
+        "nome": "Lugan Completo",
+        "valor": 20
       }
     ],
     "fieisPor": 400
@@ -713,8 +759,8 @@
     {
       "id": "golpe_devastador",
       "nome": "Golpe Devastador de Lugan",
-      "dadosAtaqueExtras": 0,
-      "dadosDanoExtras": -1,
+      "dadosAtaqueExtras": 3,
+      "dadosDanoExtras": 2,
       "ativo": false,
       "pressaoPorPonto": 8
     }
@@ -732,19 +778,7 @@
       "nome": "Lugan da Batalha",
       "nivel": 3,
       "tipo": "passivo",
-      "descricao": "+150 em qualquer ataque; +150 em qualquer defesa; +60 no final do dano",
-      "escala": {
-        "ataquePorNivel": {
-          "ataqueArmaBranca": 50,
-          "ataqueMagico": 50,
-          "ataqueLuta": 50,
-          "ataqueArmaFogo": 50,
-          "esquivar": 50,
-          "bloquear": 50,
-          "aparar": 50
-        },
-        "danoPorNivel": 20
-      }
+      "descricao": "+150 em qualquer ataque; +150 em qualquer defesa; +60 no final do dano"
     },
     {
       "id": "golpe_devastador",
@@ -752,11 +786,7 @@
       "nivel": 3,
       "tipo": "ativo",
       "descricao": "4d×100 no ataque; 3d×100 no multiplicador de dano.",
-      "escala": {
-        "usosPorNivel": 1,
-        "dadosAtaquePorNivel": 1,
-        "dadosDanoPorNivel": 1
-      }
+      "usosPorDia": 3
     },
     {
       "id": "portador_da_jikar",
@@ -770,38 +800,22 @@
       "nome": "Campeão do Combate Divino",
       "nivel": 3,
       "tipo": "passivo",
-      "descricao": "escolha a linha de arma da vida dele: Espada / Katana / Jikar; +140 nas rolagens de ataque usando essa arma; +140 nas rolagens de defesa usando essa arma; +40 no dano físico com essa arma; pressão de ataque em 4 km².",
-      "escala": {
-        "ataquePorNivel": {
-          "ataqueArmaBranca": 70,
-          "aparar": 70
-        },
-        "danoPorNivel": 20
-      }
+      "descricao": "escolha a linha de arma da vida dele: Espada / Katana / Jikar; +140 nas rolagens de ataque usando essa arma; +140 nas rolagens de defesa usando essa arma; +40 no dano físico com essa arma; pressão de ataque em 4 km²."
     },
     {
       "id": "forca_das_montanhas_divinas",
       "nome": "Força das Montanhas Divinas",
       "nivel": 1,
       "tipo": "passivo",
-      "descricao": "[+60] Força permanente; ataques que usam Força afetam 2 km²; causar terremoto em linha de 500 m por 4 km²; quem estiver no caminho testa Esquiva contra o ataque do Lugan; quem falhar sofre o dano.",
-      "escala": {
-        "atributoPorNivel": {
-          "atributo": "forca",
-          "valor": 60
-        }
-      }
+      "descricao": "[+60] Força permanente; ataques que usam Força afetam 2 km²; causar terremoto em linha de 500 m por 4 km²; quem estiver no caminho testa Esquiva contra o ataque do Lugan; quem falhar sofre o dano."
     },
     {
       "id": "protecao_divina",
       "nome": "Proteção Divina",
       "nivel": 1,
       "tipo": "defensivo",
-      "descricao": "1 rodada por dia de imunidade total a dano, divino ou não; +500 PV extras; proteção de área em 5 km²; absorve 200 de dano no cenário e em todos os envolvidos naquele ataque; pode escolher até 100 criaturas por dia para proteger; essas criaturas recebem 2 barras de CD e +15 em ataque, defesa e perícias; bônus de +150 para anular efeitos mentais divinos.",
-      "escala": {
-        "pvPorNivel": 500,
-        "usosPorNivel": 1
-      }
+      "usosPorDia": 1,
+      "descricao": "1 rodada por dia de imunidade total a dano, divino ou não; +500 PV extras; proteção de área em 5 km²; absorve 200 de dano no cenário e em todos os envolvidos naquele ataque; pode escolher até 100 criaturas por dia para proteger; essas criaturas recebem 2 barras de CD e +15 em ataque, defesa e perícias; bônus de +150 para anular efeitos mentais divinos."
     },
     {
       "id": "o_filho_de_hagashi",
@@ -809,10 +823,7 @@
       "nivel": 4,
       "tipo": "passivo",
       "usosPorDia": 1,
-      "descricao": "protege Hagashi contra dano em área de 100 km do reino; reduz 350 de dano por ponto, então 1.400 de proteção territorial; vincula 32.000 hagashianos fiéis; esses fiéis recebem proteção contra dano em área; fiéis ganham +48 em ataque e defesa quando Alexander desejar; esse bônus dura 8 horas e pode ser usado 1 vez a cada 24h; Alexander ganha +1 em ataque e defesa para cada 200 fiéis hagashianos; o dano dele aumenta +1 para cada 400 fiéis; a morte desses fiéis diminui esse poder.",
-      "escala": {
-        "fieisPorNivel": 8000
-      }
+      "descricao": "protege Hagashi contra dano em área de 100 km do reino; reduz 350 de dano por ponto, então 1.400 de proteção territorial; vincula 32.000 hagashianos fiéis; esses fiéis recebem proteção contra dano em área; fiéis ganham +48 em ataque e defesa quando Alexander desejar; esse bônus dura 8 horas e pode ser usado 1 vez a cada 24h; Alexander ganha +1 em ataque e defesa para cada 200 fiéis hagashianos; o dano dele aumenta +1 para cada 400 fiéis; a morte desses fiéis diminui esse poder."
     },
     {
       "id": "lugan_completo",
@@ -820,31 +831,14 @@
       "nivel": 1,
       "tipo": "passivo",
       "descricao": "voo de 280 km/h; altura máxima de voo de 3.000 m; +60 em qualquer ataque; +60 em qualquer defesa; +20 no dano; pressão de ataque em 1 km ao redor; bônus de +200 para anular efeitos mentais divinos; comunicação com Kitaicos; seguidores fiéis: 1d × 1.000.",
-      "mostrarNaBatalha": true,
-      "escala": {
-        "ataquePorNivel": {
-          "ataqueArmaBranca": 30,
-          "ataqueMagico": 30,
-          "ataqueLuta": 30,
-          "ataqueArmaFogo": 30,
-          "esquivar": 30,
-          "bloquear": 30,
-          "aparar": 30
-        },
-        "danoPorNivel": 10
-      }
+      "mostrarNaBatalha": true
     },
     {
       "id": "manipulador_de_tsu_real",
       "nome": "Manipulador de Tsu Real",
       "nivel": 1,
       "tipo": "passivo",
-      "descricao": "sua perícia vira Manipular Tsu Real; recebe +70 em Manipular Tsu Real; danos mágicos recebem +10; pode conjurar uma magia simultânea em 3 locais de Kitai; se a magia for em alvo, pode atingir 50 alvos simultâneos; pode dar +30 em def para companheiros Lugans.(nao ataca)",
-      "escala": {
-        "ataquePorNivel": {
-          "ataqueMagico": 70
-        }
-      }
+      "descricao": "sua perícia vira Manipular Tsu Real; recebe +70 em Manipular Tsu Real; danos mágicos recebem +10; pode conjurar uma magia simultânea em 3 locais de Kitai; se a magia for em alvo, pode atingir 50 alvos simultâneos; pode dar +30 em def para companheiros Lugans.(nao ataca)"
     },
     {
       "id": "fogo_real",

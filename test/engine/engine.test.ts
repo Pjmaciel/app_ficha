@@ -20,6 +20,7 @@ import {
   resumoBatalha,
   subirNivel,
   totalAtributo,
+  totalAtributoFicha,
   totalPericia,
   tsuValor,
   usoDoPoder,
@@ -55,7 +56,7 @@ describe('baseAtributo e totalAtributo', () => {
     ['distancia', 152],
     ['mental', 165],
   ])('atributo %s da ficha tem total %i', (id, esperado) => {
-    expect(totalAtributo(ficha.atributos[id])).toBe(esperado);
+    expect(totalAtributoFicha(ficha, id)).toBe(esperado);
   });
 });
 
@@ -163,10 +164,13 @@ describe('totalPericia', () => {
     expect(totalPericia(ficha, 'arma_de_fogo')).toBe(408);
   });
 
-  it('inclui os extras do atributo (Força 322 em intimidar)', () => {
+  it('inclui as parcelas derivadas e os extras manuais do atributo (Força 322 em intimidar)', () => {
     const f = clonar();
-    f.atributos.forca.extras = [];
-    expect(totalPericia(f, 'intimidar')).toBe(458 - 60);
+    expect(totalPericia(f, 'intimidar')).toBe(458);
+    f.atributos.forca.extras.push({ nome: 'Poção', valor: 5 });
+    expect(totalPericia(f, 'intimidar')).toBe(458 + 5);
+    delete f.poderes.find((p) => p.id === 'forca_das_montanhas_divinas')!.escala;
+    expect(totalPericia(f, 'intimidar')).toBe(458 + 5 - 60);
   });
 
   // Totais por grupo, conforme atributo governante e inicial (planilha correta, nível 41).
@@ -270,9 +274,9 @@ describe('combate', () => {
     expect(r.composicao.reduce((s, x) => s + x.valor, 0)).toBe(r.total);
   });
 
-  it('a composição do ataque com arma branca lista a perícia e as fontes nomeadas', () => {
+  it('a composição do ataque com arma branca lista a perícia, as parcelas dos poderes e as fontes manuais', () => {
     const { composicao } = combate(ficha, 'ataqueArmaBranca');
-    expect(composicao.map((x) => x.valor)).toEqual([608, 150, 140, 60, 120]);
+    expect(composicao.map((x) => x.valor)).toEqual([608, 150, 210, 30, 120, -70, 30]);
     expect(composicao.map((x) => x.nome)).toContain('Lugan da Batalha');
   });
 
@@ -312,7 +316,8 @@ describe('combate', () => {
   it('usa a fonte de cada chave individualmente', () => {
     const f = clonar();
     f.combate.esquivar.fontes = [{ nome: 'Só este', valor: 10 }];
-    expect(combate(f, 'esquivar').total).toBe(207 + 3 + 10);
+    // as parcelas derivadas dos poderes (Lugan da Batalha 150 e Lugan Completo 30) continuam somando
+    expect(combate(f, 'esquivar').total).toBe(207 + 3 + 150 + 30 + 10);
     expect(combate(f, 'ataqueArmaBranca').total).toBe(1078);
     expect(combate(f, 'aparar').total).toBe(1094);
   });
@@ -382,7 +387,7 @@ describe('subirNivel', () => {
     expect(JSON.stringify(f)).toBe(antes);
     expect(nova).not.toBe(f);
     nova.atributos.forca.extras.push({ nome: 'X', valor: 1 });
-    expect(f.atributos.forca.extras).toHaveLength(1);
+    expect(f.atributos.forca.extras).toHaveLength(0);
   });
 
   it('rejeita quantidade que não seja inteiro positivo', () => {
