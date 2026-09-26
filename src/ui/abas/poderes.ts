@@ -1,8 +1,10 @@
 // Aba Poderes: cadastro completo; poderes do tipo "removido" continuam listados, em cinza.
+import { mostraNaBatalha } from '../../engine';
 import type { Poder, TipoPoder } from '../../model/types';
 import { ROTULO_TIPO_PODER } from '../componentes';
 import type { Contexto } from '../contexto';
 import { campo, entradaNumero, entradaTexto, h, novoIdItem, selecao } from '../dom';
+import { secaoTextosBatalha } from './textos-batalha';
 
 const TIPOS = Object.keys(ROTULO_TIPO_PODER) as TipoPoder[];
 
@@ -13,9 +15,14 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
   const cartao = (p: Poder, i: number): HTMLElement => {
     const nome = entradaTexto(p.nome, (v) => { p.nome = v; ctx.mudou(); }, 'Nome do poder');
     const raiz = h('article', { class: p.tipo === 'removido' ? 'cartao poder removido' : 'cartao poder' });
+    const marca = h('input', { type: 'checkbox', checked: mostraNaBatalha(p), disabled: p.tipo === 'removido' });
+    marca.addEventListener('change', () => { p.mostrarNaBatalha = marca.checked; ctx.mudou(); });
     const tipo = selecao<TipoPoder>(TIPOS.map((t) => [t, ROTULO_TIPO_PODER[t]]), p.tipo, (v) => {
       p.tipo = v;
       raiz.classList.toggle('removido', v === 'removido');
+      // Sem escolha explícita, a marca segue o tipo (defensivo e item aparecem por padrão).
+      marca.checked = mostraNaBatalha(p);
+      marca.disabled = v === 'removido';
       ctx.mudou();
     });
     const descricao = h('textarea', { rows: 4 });
@@ -35,6 +42,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
         opcional('Custo de fadiga', 'custoFadiga'),
         opcional('Usos por dia', 'usosPorDia')),
       campo('Descrição', descricao),
+      h('label', { class: 'marcador' }, marca, h('span', {}, 'Mostrar na aba Batalha (absorções e proteções)')),
       h('button', {
         type: 'button', class: 'remover',
         onclick: () => {
@@ -58,7 +66,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
 
   return h('div', {},
     h('p', { class: 'detalhe' },
-      'Só entram no painel de sessão os poderes com custo de fadiga ou usos por dia e tipo diferente de Removido.'),
+      'Só entram no painel de sessão os poderes com custo de fadiga ou usos por dia e tipo diferente de Removido. Poderes defensivos e itens aparecem por padrão na aba Batalha; os demais, se marcados.'),
     lista,
     h('button', {
       type: 'button', class: 'destaque',
@@ -67,5 +75,6 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
         desenhar(f().poderes.length - 1);
         ctx.mudou();
       },
-    }, 'Adicionar poder'));
+    }, 'Adicionar poder'),
+    secaoTextosBatalha(ctx));
 }

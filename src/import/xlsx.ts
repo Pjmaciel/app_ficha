@@ -12,6 +12,7 @@ import type {
   TipoPoder,
   Tsu,
 } from '../model/types';
+import { PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
 
 /** Regras do contrato v2 que a planilha não traz em células numéricas próprias. */
 const NIVEL_REFERENCIA = 41;
@@ -185,16 +186,16 @@ function nivelOuNulo(aba: XLSX.WorkSheet, endereco: string): number | null {
  * Os nomes seguem o contrato (a planilha tem erros de digitação, como "montadas"); só o nível e a
  * descrição vêm das células.
  */
-const PODERES: { id: string; nome: string; tipo: TipoPoder; linha: number; usosPorDia?: number }[] = [
+const PODERES: { id: string; nome: string; tipo: TipoPoder; linha: number; usosPorDia?: number; mostrarNaBatalha?: boolean }[] = [
   { id: 'velocidade_divina', nome: 'Velocidade Divina', tipo: 'passivo', linha: 73 },
   { id: 'lugan_da_batalha', nome: 'Lugan da Batalha', tipo: 'passivo', linha: 76 },
-  { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', tipo: 'ativo', linha: 79 },
+  { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', tipo: 'ativo', linha: 79, usosPorDia: 3 },
   { id: 'portador_da_jikar', nome: 'Portador da Jikar', tipo: 'item', linha: 82 },
   { id: 'campeao_do_combate_divino', nome: 'Campeão do Combate Divino', tipo: 'passivo', linha: 87 },
   { id: 'forca_das_montanhas_divinas', nome: 'Força das Montanhas Divinas', tipo: 'passivo', linha: 93 },
   { id: 'protecao_divina', nome: 'Proteção Divina', tipo: 'defensivo', linha: 98, usosPorDia: 1 },
   { id: 'o_filho_de_hagashi', nome: 'O Filho de Hagashi', tipo: 'passivo', linha: 106, usosPorDia: 1 },
-  { id: 'lugan_completo', nome: 'Lugan Completo', tipo: 'passivo', linha: 115 },
+  { id: 'lugan_completo', nome: 'Lugan Completo', tipo: 'passivo', linha: 115, mostrarNaBatalha: true },
   { id: 'manipulador_de_tsu_real', nome: 'Manipulador de Tsu Real', tipo: 'passivo', linha: 124 },
   { id: 'fogo_real', nome: 'Fogo Real', tipo: 'ativo', linha: 130 },
 ];
@@ -207,7 +208,7 @@ function descricaoDoPoder(lugan: XLSX.WorkSheet, id: string, linha: number): str
 }
 
 function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
-  return PODERES.map(({ id, nome, tipo, linha, usosPorDia }) => {
+  return PODERES.map(({ id, nome, tipo, linha, usosPorDia, mostrarNaBatalha }) => {
     const poder: Poder = {
       id,
       nome,
@@ -216,6 +217,7 @@ function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
       descricao: descricaoDoPoder(lugan, id, linha),
     };
     if (usosPorDia !== undefined) poder.usosPorDia = usosPorDia;
+    if (mostrarNaBatalha !== undefined) poder.mostrarNaBatalha = mostrarNaBatalha;
     return poder;
   });
 }
@@ -309,7 +311,8 @@ function primeiroNumero(lugan: XLSX.WorkSheet, endereco: string): number {
  * Importa a planilha do personagem (abas LUGAN e FICHA) e devolve a ficha versão 2.
  * A estrutura de fontes de combate, os dados extras, o dano e o golpe vêm do contrato v2; da planilha
  * vêm identidade, bônus de nível, pontos, extras, perícias, PV extra, valores passivos, poderes e Tsu.
- * As anotações de dano e fiéis das células F25:F32 são ignoradas.
+ * As anotações de dano e fiéis das células F25:F32 são ignoradas. Ações, lembretes e reações da aba
+ * Batalha não existem na planilha: vêm dos textos iniciais de `model/batalha-padrao`.
  */
 export function importarXlsx(buffer: ArrayBuffer): Ficha {
   const livro = XLSX.read(new Uint8Array(buffer), { type: 'array' });
@@ -374,10 +377,13 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
       fieisPor: 400,
     },
     golpes: [
-      { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 3, dadosDanoExtras: 2, ativo: false },
+      { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 3, dadosDanoExtras: 2, ativo: false, pressaoPorPonto: PRESSAO_GOLPE_POR_PONTO },
     ],
     poderes: lerPoderes(lugan),
     tsu,
+    acoes: acoesPadrao(),
+    lembretes: lembretesPadrao(),
+    reacoes: reacoesPadrao(),
     fieis: 0,
     xp: { total: numero(lugan, 'C1'), atual: numero(lugan, 'E4') },
   };

@@ -2,10 +2,12 @@
 // Regra de ouro: digitar em um campo só recalcula os textos derivados (funções registradas com
 // `ligar`); os campos nunca são recriados durante a digitação, então o foco não se perde.
 import {
-  alertaBonusNivel, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, pvTotal,
+  alertaBonusNivel, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
+  usoDoPoder,
 } from '../engine';
-import type { Ficha, Poder } from '../model/types';
+import type { Ficha } from '../model/types';
 import { abaAtributos } from './abas/atributos';
+import { abaBatalha } from './abas/batalha';
 import { abaCombate } from './abas/combate';
 import { abaIdentidade } from './abas/identidade';
 import { abaPericias } from './abas/pericias';
@@ -17,13 +19,14 @@ import type { Contexto } from './contexto';
 import { campo, definirTexto, definirValor, entradaNumero, h, inteiro, limpar } from './dom';
 import { carregar, fichaPadrao, salvar } from './estado';
 import { gerarJson, lerJson, lerXlsx } from './importacao';
+import { aplicarPv, descansar, limitarPv, mudarFadiga, usarPoder } from './sessao';
 
-const ABAS = ['Resumo de Combate', 'Identidade', 'Atributos', 'Perícias', 'Combate', 'Poderes', 'Tsu'] as const;
+const ABAS = ['Batalha', 'Resumo de Combate', 'Identidade', 'Atributos', 'Perícias', 'Combate', 'Poderes', 'Tsu'] as const;
 type Aba = (typeof ABAS)[number];
 
 export function iniciar(raiz: HTMLElement): void {
   let { ficha, sessao } = carregar();
-  let abaAtiva: Aba = 'Resumo de Combate';
+  let abaAtiva: Aba = 'Batalha';
   let ligacoesAba: (() => void)[] = [];
   const ligacoesGlobais: (() => void)[] = [];
   const busca = { termo: '' };
@@ -62,8 +65,6 @@ export function iniciar(raiz: HTMLElement): void {
     avisar,
     composicoesAbertas,
   };
-
-  const limitarPv = (valor: number): number => Math.max(0, Math.min(valor, pvTotal(ficha)));
 
   // ---------- Topo: visão rápida ----------
   function montarCabecalho(): void {
@@ -126,17 +127,13 @@ export function iniciar(raiz: HTMLElement): void {
   const listaUsos = h('ul', { class: 'usos' });
   const blocoUsos = h('div', { class: 'bloco largo' }, h('span', { class: 'rotulo' }, 'Usos por dia'), listaUsos);
 
-  const ehUsavel = (p: Poder): boolean =>
-    p.tipo !== 'removido' && (p.usosPorDia !== undefined || p.custoFadiga !== undefined);
-
   function desenharUsos(): void {
     const focado = document.activeElement?.getAttribute('data-uso');
     limpar(listaUsos);
-    const usaveis = ficha.poderes.filter(ehUsavel);
+    const usaveis = ficha.poderes.filter(poderUsavel);
     blocoUsos.hidden = usaveis.length === 0;
     for (const p of usaveis) {
-      const usos = sessao.usosPoder[p.id] ?? 0;
-      const esgotado = p.usosPorDia !== undefined && usos >= p.usosPorDia;
+      const { usados: usos, esgotado } = usoDoPoder(p, sessao);
       const custo = p.custoFadiga ?? 0;
       listaUsos.append(h('li', {},
         h('span', { class: 'nome-uso' }, p.nome || 'Sem nome'),
@@ -145,13 +142,7 @@ export function iniciar(raiz: HTMLElement): void {
           custo > 0 ? ` · custo ${custo} de fadiga` : ''),
         h('button', {
           type: 'button', disabled: esgotado, 'data-uso': p.id, 'aria-label': `Usar ${p.nome || 'poder'}`,
-          onclick: () => {
-            sessao.usosPoder[p.id] = (sessao.usosPoder[p.id] ?? 0) + 1;
-            sessao.fadiga += p.custoFadiga ?? 0;
-            persistir();
-            atualizarTudo();
-            avisar(`${p.nome} usado.`);
-          },
+          onclick: () => usarPoder(ctx, p),
         }, 'Usar')));
     }
     if (focado) listaUsos.querySelector<HTMLElement>(`[data-uso="${CSS.escape(focado)}"]:not(:disabled)`)?.focus();
@@ -160,16 +151,12 @@ export function iniciar(raiz: HTMLElement): void {
   function montarPainel(): void {
     const valorPv = entradaNumero(10, () => {}, { min: 0 });
     const campoPv = entradaNumero(sessao.pvAtual, (v) => {
-      sessao.pvAtual = limitarPv(v ?? 0);
+      sessao.pvAtual = limitarPv(ctx, v ?? 0);
       persistir();
       atualizarTudo();
     }, { min: 0 });
     campoPv.addEventListener('change', () => definirValor(campoPv, String(sessao.pvAtual)));
-    const aplicar = (sinal: 1 | -1): void => {
-      sessao.pvAtual = limitarPv(sessao.pvAtual + sinal * Math.max(0, inteiro(valorPv.value, 0)));
-      persistir();
-      atualizarTudo();
-    };
+    const aplicar = (sinal: 1 | -1): void => aplicarPv(ctx, sinal * Math.max(0, inteiro(valorPv.value, 0)));
     const total = h('span', {});
     const preenchimento = h('div', { class: 'preenchimento' });
     const barra = h('div', { class: 'barra pv', role: 'progressbar', 'aria-label': 'Pontos de vida', 'aria-valuemin': 0 }, preenchimento);
@@ -186,11 +173,7 @@ export function iniciar(raiz: HTMLElement): void {
     campoFadiga.addEventListener('change', () => definirValor(campoFadiga, String(sessao.fadiga)));
     ligacoesGlobais.push(() => definirValor(campoFadiga, String(sessao.fadiga)));
     const passoFadiga = entradaNumero(5, () => {}, { min: 1 });
-    const mudarFadiga = (sinal: 1 | -1): void => {
-      sessao.fadiga = Math.max(0, sessao.fadiga + sinal * Math.max(0, inteiro(passoFadiga.value, 0)));
-      persistir();
-      atualizarTudo();
-    };
+    const gastarFadiga = (sinal: 1 | -1): void => mudarFadiga(ctx, sinal * Math.max(0, inteiro(passoFadiga.value, 0)));
     ligacoesGlobais.push(desenharUsos);
 
     painel.append(
@@ -204,20 +187,14 @@ export function iniciar(raiz: HTMLElement): void {
       h('div', { class: 'bloco' },
         h('div', { class: 'linha-titulo' }, h('span', { class: 'rotulo' }, 'Fadiga'), h('span', { class: 'numeros' }, campo('Fadiga', campoFadiga, true))),
         h('div', { class: 'controles' },
-          h('button', { type: 'button', onclick: () => mudarFadiga(1) }, 'Gastar'),
+          h('button', { type: 'button', onclick: () => gastarFadiga(1) }, 'Gastar'),
           campo('Quantidade de fadiga', passoFadiga, true),
-          h('button', { type: 'button', onclick: () => mudarFadiga(-1) }, 'Recuperar'))),
+          h('button', { type: 'button', onclick: () => gastarFadiga(-1) }, 'Recuperar'))),
       blocoUsos,
       h('div', { class: 'bloco acoes' },
         h('button', {
           type: 'button', class: 'destaque',
-          onclick: () => {
-            sessao.fadiga = 0;
-            sessao.usosPoder = {};
-            persistir();
-            atualizarTudo();
-            avisar('Descanso concluído: fadiga e usos por dia zerados.');
-          },
+          onclick: () => descansar(ctx),
         }, 'Descansar')),
     );
   }
@@ -249,11 +226,14 @@ export function iniciar(raiz: HTMLElement): void {
   }
 
   function renderConteudo(): void {
+    // Na aba Batalha o card "Minha rodada" já traz PV, fadiga, usos e descanso; o painel do topo sairia duplicado.
+    painel.hidden = abaAtiva === 'Batalha';
     limpar(conteudo);
     ligacoesAba = [];
     conteudo.setAttribute('role', 'tabpanel');
     conteudo.setAttribute('aria-labelledby', `aba-${ABAS.indexOf(abaAtiva)}`);
     const construtores: Record<Aba, () => HTMLElement> = {
+      Batalha: () => abaBatalha(ctx),
       'Resumo de Combate': () => abaResumo(ctx),
       Identidade: () => abaIdentidade(ctx),
       Atributos: () => abaAtributos(ctx),

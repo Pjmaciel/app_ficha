@@ -109,6 +109,38 @@ input[type='checkbox'] { width: 1.5rem; height: 1.5rem; min-height: 0; accent-co
 .resumo.alerta { color: var(--alerta); }
 .barra-acoes { display: flex; gap: 0.6rem; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; }
 
+/* Aba Batalha */
+.aba-batalha { display: grid; gap: 0.6rem; min-width: 0; }
+.aba-batalha h2 { margin-top: 0.6rem; }
+.aba-batalha > section > h2:first-child, .minha-rodada > h2 { margin-top: 0; }
+.aba-batalha .cartao { min-width: 0; overflow-wrap: anywhere; }
+.aba-batalha .golpe, .aba-batalha .cartao > .grade { margin-top: 0.4rem; }
+.subtitulo { margin: 0.7rem 0 0.4rem; color: var(--suave); }
+.minha-rodada { display: grid; gap: 0.6rem; }
+.minha-rodada .visao { margin-top: 0; }
+button.grande { min-height: 3.25rem; font-size: 1.05rem; }
+.usos-batalha { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+.linha-uso { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 0.6rem; align-items: center; margin-top: 0.4rem; }
+.linha-uso .nome-uso { grid-column: 1; font-weight: 600; }
+.linha-uso .detalhe { grid-column: 1; }
+.linha-uso button { grid-column: 2; grid-row: 1 / span 2; min-width: 6rem; }
+.linha-uso > .detalhe:first-child { grid-row: 1 / span 2; }
+.valor-medio { font-size: 1.2rem; font-weight: 700; color: var(--destaque); margin: 0.1rem 0; }
+.protecao .descricao { margin: 0.3rem 0; }
+.reacoes, .lembretes { margin: 0.3rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
+.reacoes li { display: grid; gap: 0.1rem; padding-top: 0.4rem; border-top: 1px solid var(--borda); }
+.reacoes li:first-child { border-top: 0; padding-top: 0; }
+.lembretes li { padding-left: 1rem; position: relative; }
+.lembretes li::before { content: '•'; color: var(--destaque); position: absolute; left: 0; }
+
+/* Textos da batalha (aba Poderes) */
+.textos-batalha { display: grid; gap: 0.6rem; margin-top: 1rem; }
+.texto-batalha .lista-textos { list-style: none; margin: 0.4rem 0; padding: 0; display: grid; gap: 0.6rem; }
+.item-texto { display: grid; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--borda); }
+.item-texto:first-child { border-top: 0; padding-top: 0; }
+.campos-texto { display: grid; gap: 0.4rem; }
+.item-texto .remover { justify-self: start; }
+
 /* Composição */
 .bloco-composicao { margin-top: 0.4rem; }
 .composicao-botao { min-height: 2.25rem; padding: 0.25rem 0.75rem; font-size: 0.9rem; }

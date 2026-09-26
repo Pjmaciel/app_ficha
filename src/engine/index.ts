@@ -1,4 +1,6 @@
+import { PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
 import type {
+  AcaoBatalha,
   Atributo,
   AtributoId,
   ChaveCombate,
@@ -6,6 +8,7 @@ import type {
   Fonte,
   GolpeEspecial,
   Poder,
+  Reacao,
   Regras,
   Sessao,
   Tsu,
@@ -215,6 +218,148 @@ export function novaSessao(f: Ficha): Sessao {
   };
 }
 
+/** Número com sinal explícito: +1078 ou −5. */
+export function comSinal(n: number): string {
+  return n >= 0 ? `+${n}` : `−${Math.abs(n)}`;
+}
+
+/** Rolagem no formato do jogo: "5d×100 +1078". */
+export function formatarRolagem(dados: number, bonus: number): string {
+  return `${dados}d×100 ${comSinal(bonus)}`;
+}
+
+/** Poder que entra no painel de sessão e na aba Batalha como consumível: tem usos por dia ou custo de fadiga e não foi removido. */
+export function poderUsavel(p: Poder): boolean {
+  return p.tipo !== 'removido' && (p.usosPorDia !== undefined || p.custoFadiga !== undefined);
+}
+
+/** Poder exibido nas absorções e proteções: marcado à mão ou, sem marca, do tipo defensivo ou item; removido nunca. */
+export function mostraNaBatalha(p: Poder): boolean {
+  if (p.tipo === 'removido') return false;
+  return p.mostrarNaBatalha ?? (p.tipo === 'defensivo' || p.tipo === 'item');
+}
+
+export interface UsoPoder {
+  id: string;
+  nome: string;
+  /** Usos já gastos na sessão. */
+  usados: number;
+  /** Limite por dia; nulo quando o poder só custa fadiga. */
+  limite: number | null;
+  /** Usos que sobram (limite − usados, nunca negativo); nulo sem limite. */
+  restantes: number | null;
+  custoFadiga: number;
+  esgotado: boolean;
+}
+
+/** Usos de um poder na sessão atual. */
+export function usoDoPoder(p: Poder, sessao: Sessao): UsoPoder {
+  const usados = sessao.usosPoder[p.id] ?? 0;
+  const limite = p.usosPorDia ?? null;
+  return {
+    id: p.id,
+    nome: p.nome,
+    usados,
+    limite,
+    restantes: limite === null ? null : Math.max(0, limite - usados),
+    custoFadiga: p.custoFadiga ?? 0,
+    esgotado: limite !== null && usados >= limite,
+  };
+}
+
+export interface RolagemPronta { dados: number; bonus: number; texto: string }
+
+const rolagemPronta = (c: { dados: number; total: number }): RolagemPronta => ({
+  dados: c.dados,
+  bonus: c.total,
+  texto: formatarRolagem(c.dados, c.total),
+});
+
+export interface GolpeBatalha {
+  id: string;
+  nome: string;
+  ataque: RolagemPronta;
+  dano: ResultadoDano;
+  /** Pontos do golpe: o nível do poder de mesmo id (nulo se não houver). */
+  pontos: number | null;
+  /** Pressão em km²: pontos × pressaoPorPonto (nulo se faltar um dos dois). */
+  pressaoKm2: number | null;
+  /** Usos por dia do poder correspondente; nulo se ele não existe ou não é consumível. */
+  uso: UsoPoder | null;
+}
+
+export interface DefesaBatalha { chave: 'aparar' | 'bloquear' | 'esquivar'; nome: string; rolagem: RolagemPronta }
+
+export interface ProtecaoBatalha { id: string; nome: string; nivel: number | null; descricao: string; uso: UsoPoder | null }
+
+export interface ResumoBatalha {
+  pv: { atual: number; total: number };
+  fadiga: number;
+  /** Dados por nível no formato "2d×100". */
+  rolagemBase: string;
+  armaPrincipal: string;
+  /** Nível do poder Velocidade Divina (nulo se ausente ou removido). */
+  velocidadeDivina: number | null;
+  ataqueBasico: RolagemPronta;
+  danoBasico: ResultadoDano;
+  golpes: GolpeBatalha[];
+  defesas: DefesaBatalha[];
+  acoes: AcaoBatalha[];
+  protecoes: ProtecaoBatalha[];
+  reacoes: Reacao[];
+  lembretes: string[];
+  /** Todos os poderes consumíveis, com os usos restantes. */
+  usos: UsoPoder[];
+}
+
+const DEFESAS_BATALHA: { chave: DefesaBatalha['chave']; nome: string }[] = [
+  { chave: 'aparar', nome: 'Aparar' },
+  { chave: 'bloquear', nome: 'Bloquear' },
+  { chave: 'esquivar', nome: 'Esquivar' },
+];
+
+/** Tudo o que a aba Batalha exibe, já calculado; não altera a ficha nem a sessão. */
+export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
+  const poderDe = (id: string) => f.poderes.find((p) => p.id === id);
+  const velocidade = poderDe('velocidade_divina');
+  const usoOuNulo = (p: Poder | undefined): UsoPoder | null =>
+    p && poderUsavel(p) && p.usosPorDia !== undefined ? usoDoPoder(p, sessao) : null;
+
+  const golpes = f.golpes.map((g): GolpeBatalha => {
+    const r = golpe(f, g);
+    const poder = poderDe(g.id);
+    const pontos = poder && poder.tipo !== 'removido' ? poder.nivel : null;
+    return {
+      id: g.id,
+      nome: g.nome,
+      ataque: { dados: r.ataqueDados, bonus: r.ataqueTotal, texto: formatarRolagem(r.ataqueDados, r.ataqueTotal) },
+      dano: r.dano,
+      pontos,
+      pressaoKm2: pontos !== null && g.pressaoPorPonto !== undefined ? pontos * g.pressaoPorPonto : null,
+      uso: usoOuNulo(poder),
+    };
+  });
+
+  return {
+    pv: { atual: sessao.pvAtual, total: pvTotal(f) },
+    fadiga: sessao.fadiga,
+    rolagemBase: `${dadosPorNivel(f.identidade.nivel)}d×100`,
+    armaPrincipal: f.identidade.armaPrincipal.trim(),
+    velocidadeDivina: velocidade && velocidade.tipo !== 'removido' ? velocidade.nivel : null,
+    ataqueBasico: rolagemPronta(combate(f, 'ataqueArmaBranca')),
+    danoBasico: dano(f),
+    golpes,
+    defesas: DEFESAS_BATALHA.map(({ chave, nome }) => ({ chave, nome, rolagem: rolagemPronta(combate(f, chave)) })),
+    acoes: f.acoes.map((a) => ({ ...a })),
+    protecoes: f.poderes.filter(mostraNaBatalha).map((p) => ({
+      id: p.id, nome: p.nome, nivel: p.nivel, descricao: p.descricao, uso: usoOuNulo(p),
+    })),
+    reacoes: f.reacoes.map((r) => ({ ...r })),
+    lembretes: [...f.lembretes],
+    usos: f.poderes.filter(poderUsavel).map((p) => usoDoPoder(p, sessao)),
+  };
+}
+
 const REGRAS_PADRAO: Omit<Regras, 'pontosIniciais'> = {
   bonusPorNivel: 4,
   nivelReferencia: 41,
@@ -290,14 +435,43 @@ function migrarV1(v1: FichaV1): Ficha {
     golpes: [],
     poderes,
     tsu: v1.tsu,
+    acoes: acoesPadrao(),
+    lembretes: lembretesPadrao(),
+    reacoes: reacoesPadrao(),
     fieis: 0,
     xp: v1.xp,
   };
 }
 
+/** Ficha versão 2 salva antes da aba Batalha: os campos dela podem faltar. */
+type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes'> & Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes'>>;
+
+/**
+ * Completa a versão 2 com os valores padrão da aba Batalha. Cada lista ausente recebe os textos iniciais.
+ * Só quando as três faltam (ficha anterior à aba) o Golpe Devastador também ganha usos por dia iguais aos
+ * seus pontos e a pressão padrão; depois disso, apagar esses campos é uma escolha do jogador e é respeitada.
+ */
+function completarBatalha(f: FichaV2Anterior): Ficha {
+  const anterior = f.acoes === undefined && f.lembretes === undefined && f.reacoes === undefined;
+  if (anterior) {
+    for (const g of f.golpes) {
+      const poder = f.poderes.find((p) => p.id === g.id);
+      if (poder && poder.tipo !== 'removido' && poder.nivel !== null && poder.usosPorDia === undefined) poder.usosPorDia = poder.nivel;
+      if (g.pressaoPorPonto === undefined && g.id === 'golpe_devastador') g.pressaoPorPonto = PRESSAO_GOLPE_POR_PONTO;
+    }
+  }
+  return {
+    ...f,
+    acoes: f.acoes ?? acoesPadrao(),
+    lembretes: f.lembretes ?? lembretesPadrao(),
+    reacoes: f.reacoes ?? reacoesPadrao(),
+  };
+}
+
 /**
  * Devolve uma ficha na versão 2. A versão 1 é convertida (regras padrão do contrato: bônus 47 no
- * nível 41, então um bônus de nível antigo dispara o alerta de correção); a versão 2 é copiada.
+ * nível 41, então um bônus de nível antigo dispara o alerta de correção); a versão 2 é copiada e
+ * recebe os valores padrão da aba Batalha quando ausentes.
  * Não valida a estrutura: para conteúdo externo, use `importarJson`.
  */
 export function migrarFicha(json: unknown): Ficha {
@@ -305,7 +479,7 @@ export function migrarFicha(json: unknown): Ficha {
     throw new Error('Ficha inválida: o conteúdo deve ser um objeto.');
   }
   const versao = (json as { versao?: unknown }).versao;
-  if (versao === 2) return structuredClone(json as Ficha);
+  if (versao === 2) return completarBatalha(structuredClone(json as FichaV2Anterior));
   if (versao === 1) return migrarV1(structuredClone(json as FichaV1));
   throw new Error(`Ficha inválida: versão não suportada (${String(versao)}); esperadas 1 ou 2.`);
 }

@@ -11,7 +11,17 @@ export interface Pericia { id: string; nome: string; grupo: GrupoPericia; atribu
 // total = inicial + atributos[atributo].total + graduacao
 
 export type TipoPoder = 'passivo' | 'ativo' | 'defensivo' | 'item' | 'removido';
-export interface Poder { id: string; nome: string; nivel: number | null; tipo: TipoPoder; descricao: string; custoFadiga?: number; usosPorDia?: number }
+export interface Poder {
+  id: string;
+  nome: string;
+  nivel: number | null;
+  tipo: TipoPoder;
+  descricao: string;
+  custoFadiga?: number;
+  usosPorDia?: number;
+  /** Mostra o poder na aba Batalha; ausente, vale true para os tipos defensivo e item. Poder removido nunca aparece. */
+  mostrarNaBatalha?: boolean;
+}
 
 export type Elemento = 'fogo' | 'agua' | 'ar' | 'terra' | 'luz' | 'trevas';
 /** valor = real ? nivel * 8 : nivel; vários elementos podem ser reais. */
@@ -38,8 +48,24 @@ export interface Dano {
   fieisPor: number | null;
 }
 
-/** Ex.: Golpe Devastador de Lugan: +3 dados de ataque e +2 de dano. */
-export interface GolpeEspecial { id: string; nome: string; dadosAtaqueExtras: number; dadosDanoExtras: number; ativo: boolean }
+/**
+ * Ex.: Golpe Devastador de Lugan: +3 dados de ataque e +2 de dano. O poder de mesmo `id` traz os pontos
+ * (nível) e os usos por dia; `pressaoPorPonto` (km² por ponto) alimenta a pressão exibida na aba Batalha.
+ */
+export interface GolpeEspecial {
+  id: string;
+  nome: string;
+  dadosAtaqueExtras: number;
+  dadosDanoExtras: number;
+  ativo: boolean;
+  pressaoPorPonto?: number;
+}
+
+/** Ação livre exibida na aba Batalha (ex.: Terra Real: "1d×48 direto no PV"). */
+export interface AcaoBatalha { id: string; nome: string; rolagem: string; notas: string }
+
+/** Guia "Quando for atacado": situação e a resposta recomendada. */
+export interface Reacao { situacao: string; resposta: string }
 
 export interface Regras {
   pontosIniciais: number;
@@ -72,6 +98,12 @@ export interface Ficha {
   golpes: GolpeEspecial[];
   poderes: Poder[];
   tsu: Tsu[];
+  /** Ações livres da aba Batalha (ações de Tsu real e outras). */
+  acoes: AcaoBatalha[];
+  /** Lembretes de regras exibidos na aba Batalha. */
+  lembretes: string[];
+  /** Guia de reação "Quando for atacado". */
+  reacoes: Reacao[];
   /** Fiéis vinculados; começa em 0 porque os bônus passivos da planilha já os incluem. */
   fieis: number;
   xp: { total: number; atual: number };

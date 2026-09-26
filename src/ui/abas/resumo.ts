@@ -19,7 +19,7 @@ function linhasDados(f: Ficha, extras: { nome: string; valor: number }[], golpeE
   return linhas;
 }
 
-function linhasCombate(f: Ficha, chave: ChaveCombate, golpeEspecial?: GolpeEspecial): Linha[] {
+export function linhasCombate(f: Ficha, chave: ChaveCombate, golpeEspecial?: GolpeEspecial): Linha[] {
   const c = combate(f, chave);
   const golpeExtra = golpeEspecial ? { nome: golpeEspecial.nome, valor: golpeEspecial.dadosAtaqueExtras } : undefined;
   return [
@@ -29,7 +29,7 @@ function linhasCombate(f: Ficha, chave: ChaveCombate, golpeEspecial?: GolpeEspec
   ];
 }
 
-function linhasDano(f: Ficha, golpeEspecial?: GolpeEspecial): Linha[] {
+export function linhasDano(f: Ficha, golpeEspecial?: GolpeEspecial): Linha[] {
   const d = f.dano;
   const r = dano(f, golpeEspecial);
   const attr = f.atributos[d.atributo];
@@ -47,7 +47,7 @@ function linhasDano(f: Ficha, golpeEspecial?: GolpeEspecial): Linha[] {
   return linhas;
 }
 
-interface OpcoesCartao {
+export interface OpcoesCartao {
   chave: string;
   titulo: string;
   texto: () => string;
@@ -56,7 +56,8 @@ interface OpcoesCartao {
   destaque?: boolean;
 }
 
-function cartaoValor(ctx: Contexto, op: OpcoesCartao): HTMLElement {
+/** Cartão com um valor grande, detalhe opcional e o botão de composição (reutilizado pela aba Batalha). */
+export function cartaoValor(ctx: Contexto, op: OpcoesCartao): HTMLElement {
   const valor = h('p', { class: 'valor-grande' });
   const detalhe = h('p', { class: 'detalhe' });
   ctx.ligar(() => {

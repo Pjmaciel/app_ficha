@@ -107,6 +107,32 @@ function validarV1(dados: Objeto): void {
   exigir(ehObjeto(xp) && ehNumero(xp.total) && ehNumero(xp.atual), 'xp inválido.');
 }
 
+/** Valida os textos da aba Batalha; a ausência de cada lista é aceita e recebe o padrão na migração. */
+function exigirTextosBatalha(dados: Objeto): void {
+  const { acoes, lembretes, reacoes } = dados;
+  if (acoes !== undefined) {
+    exigir(Array.isArray(acoes), 'acoes deve ser uma lista.');
+    for (const a of acoes) {
+      exigir(
+        ehObjeto(a) && ['id', 'nome', 'rolagem', 'notas'].every((c) => typeof a[c] === 'string'),
+        'acoes tem ação inválida (id, nome, rolagem e notas devem ser texto).',
+      );
+    }
+  }
+  if (lembretes !== undefined) {
+    exigir(Array.isArray(lembretes) && lembretes.every((l) => typeof l === 'string'), 'lembretes deve ser uma lista de textos.');
+  }
+  if (reacoes !== undefined) {
+    exigir(Array.isArray(reacoes), 'reacoes deve ser uma lista.');
+    for (const r of reacoes) {
+      exigir(
+        ehObjeto(r) && typeof r.situacao === 'string' && typeof r.resposta === 'string',
+        'reacoes tem reação inválida (situacao e resposta devem ser texto).',
+      );
+    }
+  }
+}
+
 /** Valida a estrutura completa da versão 2. */
 function validarV2(dados: Objeto): void {
   exigirIdentidade(dados.identidade, ['nome', 'jogador', 'raca', 'reino', 'pilarLuganico', 'armaPrincipal']);
@@ -153,6 +179,7 @@ function validarV2(dados: Objeto): void {
       ehNumero(g.dadosAtaqueExtras) && ehNumero(g.dadosDanoExtras) && typeof g.ativo === 'boolean',
       `golpe ${g.id} com valores inválidos.`,
     );
+    exigir(g.pressaoPorPonto === undefined || ehNumero(g.pressaoPorPonto), `golpe ${g.id} com pressaoPorPonto não numérico.`);
   }
 
   exigir(Array.isArray(poderes), 'poderes deve ser uma lista.');
@@ -164,9 +191,11 @@ function validarV2(dados: Objeto): void {
     for (const campo of ['custoFadiga', 'usosPorDia']) {
       exigir(p[campo] === undefined || ehNumero(p[campo]), `poder ${p.id} com ${campo} não numérico.`);
     }
+    exigir(p.mostrarNaBatalha === undefined || typeof p.mostrarNaBatalha === 'boolean', `poder ${p.id} com mostrarNaBatalha inválido.`);
   }
 
   exigirTsu(dados.tsu);
+  exigirTextosBatalha(dados);
   exigir(ehNumero(dados.fieis), 'fieis deve ser numérico.');
   exigir(ehObjeto(xp) && ehNumero(xp.total) && ehNumero(xp.atual), 'xp inválido.');
 }
@@ -177,8 +206,8 @@ export function exportarJson(f: Ficha): string {
 }
 
 /**
- * Lê um backup em JSON. A versão 2 é validada por inteiro; a versão 1 é validada e migrada para a 2.
- * Qualquer outra versão é rejeitada.
+ * Lê um backup em JSON. A versão 2 é validada por inteiro e recebe os padrões da aba Batalha quando
+ * faltam; a versão 1 é validada e migrada para a 2. Qualquer outra versão é rejeitada.
  */
 export function importarJson(texto: string): Ficha {
   let dados: unknown;
@@ -196,5 +225,5 @@ export function importarJson(texto: string): Ficha {
     return migrarFicha(dados);
   }
   validarV2(dados);
-  return dados as unknown as Ficha;
+  return migrarFicha(dados);
 }

@@ -34,15 +34,7 @@ export const ROTULO_TIPO_PODER: Record<TipoPoder, string> = {
   passivo: 'Passivo', ativo: 'Ativo', defensivo: 'Defensivo', item: 'Item', removido: 'Removido',
 };
 
-/** Número com sinal explícito: +1078 ou −5. */
-export function comSinal(n: number): string {
-  return n >= 0 ? `+${n}` : `−${Math.abs(n)}`;
-}
-
-/** Rolagem no formato do jogo: "5d×100 +1078". */
-export function rolagem(dados: number, bonus: number): string {
-  return `${dados}d×100 ${comSinal(bonus)}`;
-}
+export { comSinal, formatarRolagem as rolagem } from '../engine';
 
 export const somaFontes = (fontes: Fonte[]): number => fontes.reduce((s, f) => s + f.valor, 0);
 

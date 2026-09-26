@@ -67,7 +67,34 @@ describe('ficha do Alexsander', () => {
 
   it('o golpe devastador soma +3 dados de ataque e +2 de dano', () => {
     expect(ficha.golpes).toEqual([
-      { id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 3, dadosDanoExtras: 2, ativo: false },
+      {
+        id: 'golpe_devastador', nome: 'Golpe Devastador de Lugan', dadosAtaqueExtras: 3, dadosDanoExtras: 2,
+        ativo: false, pressaoPorPonto: 8,
+      },
     ]);
+  });
+
+  it('o poder Golpe Devastador tem 3 usos por dia, igual ao nível', () => {
+    const poder = ficha.poderes.find((p) => p.id === 'golpe_devastador');
+    expect(poder?.nivel).toBe(3);
+    expect(poder?.usosPorDia).toBe(3);
+  });
+
+  it('traz as ações, os lembretes e as reações da aba Batalha', () => {
+    expect(ficha.acoes.map((a) => [a.nome, a.rolagem])).toEqual([
+      ['Terra Real', '1d×48 direto no PV'],
+      ['Fogo Real', '400 de dano por rodada em 2 km²'],
+    ]);
+    expect(new Set(ficha.acoes.map((a) => a.id)).size).toBe(ficha.acoes.length);
+    expect(ficha.lembretes).toHaveLength(8);
+    expect(ficha.reacoes).toHaveLength(5);
+    expect(ficha.reacoes[0]).toEqual({
+      situacao: 'Ataque físico ou mágico normal',
+      resposta: 'Aparar ou Bloquear (valores em Defesas).',
+    });
+  });
+
+  it('só o Lugan Completo tem a marca explícita de mostrar na batalha', () => {
+    expect(ficha.poderes.filter((p) => p.mostrarNaBatalha !== undefined).map((p) => p.id)).toEqual(['lugan_completo']);
   });
 });

@@ -104,6 +104,32 @@ describe('exportarJson e importarJson', () => {
   });
 });
 
+describe('importarJson e os textos da aba Batalha', () => {
+  it('aceita a versão 2 sem os campos da aba e aplica os padrões', () => {
+    const { acoes: _a, lembretes: _l, reacoes: _r, ...antiga } = ficha;
+    const f = importarJson(JSON.stringify(antiga));
+    expect(f.acoes).toEqual(ficha.acoes);
+    expect(f.lembretes).toEqual(ficha.lembretes);
+    expect(f.reacoes).toEqual(ficha.reacoes);
+  });
+
+  it('preserva listas vazias escolhidas pelo jogador', () => {
+    const f = importarJson(JSON.stringify({ ...ficha, acoes: [], lembretes: [], reacoes: [] }));
+    expect([f.acoes, f.lembretes, f.reacoes]).toEqual([[], [], []]);
+  });
+
+  it('rejeita ação, lembrete, reação, marca de poder e pressão inválidos', () => {
+    expect(() => importarJson(JSON.stringify({ ...ficha, acoes: [{ id: 'a', nome: 'A', rolagem: 1, notas: '' }] }))).toThrow(/acoes/);
+    expect(() => importarJson(JSON.stringify({ ...ficha, acoes: 'x' }))).toThrow(/acoes/);
+    expect(() => importarJson(JSON.stringify({ ...ficha, lembretes: [1] }))).toThrow(/lembretes/);
+    expect(() => importarJson(JSON.stringify({ ...ficha, reacoes: [{ situacao: 'x' }] }))).toThrow(/reacoes/);
+    const poderes = [{ ...ficha.poderes[0], mostrarNaBatalha: 'sim' }];
+    expect(() => importarJson(JSON.stringify({ ...ficha, poderes }))).toThrow(/mostrarNaBatalha/);
+    const golpes = [{ ...ficha.golpes[0], pressaoPorPonto: '8' }];
+    expect(() => importarJson(JSON.stringify({ ...ficha, golpes }))).toThrow(/pressaoPorPonto/);
+  });
+});
+
 describe('importarJson com versão 1', () => {
   it('migra para a versão 2 preservando os totais dos atributos', () => {
     const f = importarJson(JSON.stringify(v1()));
@@ -111,6 +137,7 @@ describe('importarJson com versão 1', () => {
     expect(totalAtributo(f.atributos.forca)).toBe(23 + 215);
     expect(totalAtributo(f.atributos.mental)).toBe(23 + 118 + 60);
     expect(f.regras.pontosIniciais).toBe(1018);
+    expect(f.reacoes).toEqual(ficha.reacoes);
   });
 
   it('a ficha migrada aponta o bônus de nível antigo', () => {

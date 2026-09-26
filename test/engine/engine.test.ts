@@ -11,14 +11,18 @@ import {
   diferencaAtributos,
   golpe,
   migrarFicha,
+  mostraNaBatalha,
   novaSessao,
   pontosRestantes,
   pvBase,
+  poderUsavel,
   pvTotal,
+  resumoBatalha,
   subirNivel,
   totalAtributo,
   totalPericia,
   tsuValor,
+  usoDoPoder,
 } from '../../src/engine';
 
 const ficha = dados as Ficha;
@@ -521,6 +525,199 @@ describe('migrarFicha', () => {
   });
 });
 
+describe('mostraNaBatalha, poderUsavel e usoDoPoder', () => {
+  const base = { id: 'x', nome: 'X', nivel: 1, descricao: '' };
+
+  it('defensivo e item aparecem por padrão; passivo e ativo só se marcados; removido nunca', () => {
+    expect(mostraNaBatalha({ ...base, tipo: 'defensivo' })).toBe(true);
+    expect(mostraNaBatalha({ ...base, tipo: 'item' })).toBe(true);
+    expect(mostraNaBatalha({ ...base, tipo: 'passivo' })).toBe(false);
+    expect(mostraNaBatalha({ ...base, tipo: 'ativo' })).toBe(false);
+    expect(mostraNaBatalha({ ...base, tipo: 'passivo', mostrarNaBatalha: true })).toBe(true);
+    expect(mostraNaBatalha({ ...base, tipo: 'defensivo', mostrarNaBatalha: false })).toBe(false);
+    expect(mostraNaBatalha({ ...base, tipo: 'removido', mostrarNaBatalha: true })).toBe(false);
+  });
+
+  it('poder consumível tem usos por dia ou custo de fadiga e não é removido', () => {
+    expect(poderUsavel({ ...base, tipo: 'ativo', usosPorDia: 3 })).toBe(true);
+    expect(poderUsavel({ ...base, tipo: 'ativo', custoFadiga: 5 })).toBe(true);
+    expect(poderUsavel({ ...base, tipo: 'passivo' })).toBe(false);
+    expect(poderUsavel({ ...base, tipo: 'removido', usosPorDia: 1 })).toBe(false);
+  });
+
+  it('usos restantes nunca ficam negativos e o poder esgota no limite', () => {
+    const poder = { ...base, tipo: 'ativo' as const, usosPorDia: 3 };
+    const sessao = { pvAtual: 0, fadiga: 0, anotacoes: '', usosPoder: { x: 5 } };
+    expect(usoDoPoder(poder, sessao)).toMatchObject({ usados: 5, limite: 3, restantes: 0, esgotado: true });
+    expect(usoDoPoder(poder, { ...sessao, usosPoder: {} })).toMatchObject({ usados: 0, restantes: 3, esgotado: false });
+    expect(usoDoPoder({ ...base, tipo: 'ativo', custoFadiga: 4 }, sessao)).toMatchObject({ limite: null, restantes: null, esgotado: false, custoFadiga: 4 });
+  });
+});
+
+describe('resumoBatalha', () => {
+  const resumo = () => resumoBatalha(ficha, novaSessao(ficha));
+
+  it('traz o card Minha rodada: PV, fadiga, rolagem base, arma e Velocidade Divina', () => {
+    const r = resumo();
+    expect(r.pv).toEqual({ atual: 3404, total: 3404 });
+    expect(r.fadiga).toBe(0);
+    expect(r.rolagemBase).toBe('2d×100');
+    expect(r.armaPrincipal).toBe('Jikar');
+    expect(r.velocidadeDivina).toBe(2);
+  });
+
+  it('calcula o ataque e o dano básicos (oráculo da planilha)', () => {
+    const r = resumo();
+    expect(r.ataqueBasico).toEqual({ dados: 5, bonus: 1078, texto: '5d×100 +1078' });
+    expect(r.danoBasico.texto).toBe('3d×322 +120');
+  });
+
+  it('calcula o Golpe Devastador com pressão de 24 km² e 3 usos restantes', () => {
+    const [g] = resumo().golpes;
+    expect(g.nome).toBe('Golpe Devastador de Lugan');
+    expect(g.ataque.texto).toBe('8d×100 +1078');
+    expect(g.dano.texto).toBe('5d×322 +120');
+    expect(g.pontos).toBe(3);
+    expect(g.pressaoKm2).toBe(24);
+    expect(g.uso).toMatchObject({ usados: 0, limite: 3, restantes: 3, esgotado: false });
+  });
+
+  it('desconta os usos da sessão e esgota o golpe no terceiro uso', () => {
+    const sessao = novaSessao(ficha);
+    sessao.usosPoder.golpe_devastador = 2;
+    expect(resumoBatalha(ficha, sessao).golpes[0].uso?.restantes).toBe(1);
+    sessao.usosPoder.golpe_devastador = 3;
+    expect(resumoBatalha(ficha, sessao).golpes[0].uso).toMatchObject({ restantes: 0, esgotado: true });
+  });
+
+  it('lista as defesas na ordem aparar, bloquear, esquivar com os valores da planilha', () => {
+    const d = resumo().defesas;
+    expect(d.map((x) => x.nome)).toEqual(['Aparar', 'Bloquear', 'Esquivar']);
+    expect(d.map((x) => x.rolagem.bonus)).toEqual([1094, 941, 540]);
+    // A Jikar dá +3 dados também nas defesas (dados extras da ficha), então todas rolam 5d.
+    expect(d.map((x) => x.rolagem.texto)).toEqual(['5d×100 +1094', '5d×100 +941', '5d×100 +540']);
+  });
+
+  it('as absorções vêm de defensivo, item e dos passivos marcados', () => {
+    const nomes = resumo().protecoes.map((p) => p.nome);
+    expect(nomes).toEqual(['Portador da Jikar', 'Proteção Divina', 'Lugan Completo']);
+    const protecao = resumo().protecoes.find((p) => p.id === 'protecao_divina');
+    expect(protecao?.descricao).toContain('absorve 200');
+    expect(protecao?.uso).toMatchObject({ limite: 1, restantes: 1 });
+  });
+
+  it('desmarcar um poder o tira das absorções e o tipo removido o esconde', () => {
+    const f = clonar();
+    f.poderes.find((p) => p.id === 'lugan_completo')!.mostrarNaBatalha = false;
+    f.poderes.find((p) => p.id === 'portador_da_jikar')!.tipo = 'removido';
+    expect(resumoBatalha(f, novaSessao(f)).protecoes.map((p) => p.id)).toEqual(['protecao_divina']);
+  });
+
+  it('lista os usos apenas de poderes com usos por dia ou custo de fadiga', () => {
+    expect(resumo().usos.map((u) => [u.id, u.restantes])).toEqual([
+      ['golpe_devastador', 3],
+      ['protecao_divina', 1],
+      ['o_filho_de_hagashi', 1],
+    ]);
+  });
+
+  it('repassa ações, reações e lembretes editáveis da ficha', () => {
+    const r = resumo();
+    expect(r.acoes.map((a) => a.nome)).toEqual(['Terra Real', 'Fogo Real']);
+    expect(r.reacoes).toHaveLength(5);
+    expect(r.lembretes).toContain('Terra Real: 1d×48 direto no PV.');
+  });
+
+  it('acompanha as edições: fiéis somam ao ataque e ao dano e a pressão muda com os pontos', () => {
+    const f = clonar();
+    f.fieis = 400;
+    f.golpes[0].pressaoPorPonto = 10;
+    const r = resumoBatalha(f, novaSessao(f));
+    expect(r.ataqueBasico.bonus).toBe(1080);
+    expect(r.danoBasico.texto).toBe('3d×322 +121');
+    expect(r.golpes[0].pressaoKm2).toBe(30);
+  });
+
+  it('sem poder correspondente ou sem pressão por ponto, o golpe não tem uso nem pressão', () => {
+    const f = clonar();
+    f.poderes = f.poderes.filter((p) => p.id !== 'golpe_devastador');
+    expect(resumoBatalha(f, novaSessao(f)).golpes[0]).toMatchObject({ pontos: null, pressaoKm2: null, uso: null });
+    const g = clonar();
+    delete g.golpes[0].pressaoPorPonto;
+    expect(resumoBatalha(g, novaSessao(g)).golpes[0].pressaoKm2).toBeNull();
+  });
+
+  it('não altera a ficha nem a sessão', () => {
+    const f = clonar();
+    const s = novaSessao(f);
+    const antes = JSON.stringify([f, s]);
+    resumoBatalha(f, s);
+    expect(JSON.stringify([f, s])).toBe(antes);
+  });
+});
+
+describe('migrarFicha e os textos da aba Batalha', () => {
+  /** Ficha versão 2 salva antes da aba Batalha: sem os três campos, sem usos no golpe e sem pressão. */
+  const anterior = () => {
+    const f = clonar() as unknown as Record<string, unknown> & Ficha;
+    delete (f as Partial<Ficha>).acoes;
+    delete (f as Partial<Ficha>).lembretes;
+    delete (f as Partial<Ficha>).reacoes;
+    delete f.poderes.find((p) => p.id === 'golpe_devastador')!.usosPorDia;
+    delete f.poderes.find((p) => p.id === 'lugan_completo')!.mostrarNaBatalha;
+    delete f.golpes[0].pressaoPorPonto;
+    return f;
+  };
+
+  it('completa a ficha anterior com os padrões: textos, usos do golpe igual ao nível e pressão', () => {
+    const f = migrarFicha(anterior());
+    expect(f.versao).toBe(2);
+    expect(f.acoes).toEqual(ficha.acoes);
+    expect(f.lembretes).toEqual(ficha.lembretes);
+    expect(f.reacoes).toEqual(ficha.reacoes);
+    expect(f.poderes.find((p) => p.id === 'golpe_devastador')?.usosPorDia).toBe(3);
+    expect(f.golpes[0].pressaoPorPonto).toBe(8);
+  });
+
+  it('não sobrescreve listas presentes, mesmo vazias, nem apaga escolhas do jogador', () => {
+    const f = clonar();
+    f.acoes = [];
+    f.lembretes = ['Só este'];
+    delete f.poderes.find((p) => p.id === 'golpe_devastador')!.usosPorDia;
+    const m = migrarFicha(f);
+    expect(m.acoes).toEqual([]);
+    expect(m.lembretes).toEqual(['Só este']);
+    expect(m.reacoes).toEqual(ficha.reacoes);
+    expect(m.poderes.find((p) => p.id === 'golpe_devastador')?.usosPorDia).toBeUndefined();
+  });
+
+  it('entrega cópias novas dos padrões (editar uma ficha não contamina outra)', () => {
+    const a = migrarFicha(anterior());
+    const b = migrarFicha(anterior());
+    a.acoes[0].nome = 'Alterada';
+    a.lembretes.push('novo');
+    expect(b.acoes[0].nome).toBe('Terra Real');
+    expect(b.lembretes).toHaveLength(8);
+  });
+
+  it('a migração da versão 1 também recebe os textos padrão', () => {
+    const f = migrarFicha({
+      versao: 1,
+      identidade: { nome: 'T', jogador: 'J', raca: 'R', reino: 'K', pilarLuganico: 'P', nivel: 41, nivelLuganico: 3, basePv: 12 },
+      pontosIniciais: 1018,
+      atributos: Object.fromEntries(['forca', 'agilidade', 'reflexos', 'fortitude', 'distancia', 'mental'].map((id) => [id, { bonus: 23, pontos: 1, bonusExtra: 0 }])),
+      pericias: [],
+      combate: { bonusPassivo: { ataqueArmaBranca: 0, ataqueMagico: 0, ataqueLuta: 0, ataqueArmaFogo: 0, esquivar: 0, bloquear: 0, aparar: 0 } },
+      poderes: [],
+      tsu: [],
+      xp: { total: 0, atual: 0 },
+    });
+    expect(f.acoes).toEqual(ficha.acoes);
+    expect(f.lembretes).toHaveLength(8);
+    expect(f.reacoes).toHaveLength(5);
+  });
+});
+
 describe('pureza', () => {
   it('as funções não alteram a ficha recebida', () => {
     const f = clonar();
@@ -537,6 +734,7 @@ describe('pureza', () => {
     golpe(f, f.golpes[0]);
     subirNivel(f, 2);
     novaSessao(f);
+    resumoBatalha(f, novaSessao(f));
     migrarFicha(f);
     expect(JSON.stringify(f)).toBe(antes);
   });
