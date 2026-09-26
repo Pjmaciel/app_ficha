@@ -32,6 +32,7 @@ const efeito = (f: Ficha, poderId: string, id: string): number | null => valorDe
 const nivel1 = (): Ficha => {
   const f = clonar();
   poder(f, 'protecao_divina').nivel = 1;
+  poder(f, 'protecao_divina').pontosProprios = 1;
   return f;
 };
 
@@ -258,25 +259,26 @@ describe('patamares e o card de absorção', () => {
 });
 
 describe('pilar', () => {
-  it('a ficha traz o nível do pilar 3 e o exibe como "Justiça 3"', () => {
+  it('a ficha traz o pilar Justiça 3 e o exibe como "Justiça 3"', () => {
     const f = clonar();
-    expect(f.identidade.pilarNivel).toBe(3);
+    expect(f.pilar.nivel).toBe(3);
     expect(pilarTexto(f)).toBe('Justiça 3');
-    f.identidade.pilarNivel = 4;
+    f.pilar.nivel = 4;
     expect(pilarTexto(f)).toBe('Justiça 4');
-    f.identidade.pilarLuganico = ' ';
+    f.pilar.nome = ' ';
     expect(pilarTexto(f)).toBe('4');
-    f.identidade.pilarNivel = 0;
+    f.pilar.nivel = 0;
     expect(pilarTexto(f)).toBe('—');
   });
 
-  it('a migração preenche pilarNivel = 3 quando ausente (versões 1 e 2) e respeita o valor salvo', () => {
-    const { pilarNivel: _, ...semPilar } = clonar().identidade;
-    expect(migrarFicha({ ...clonar(), identidade: semPilar }).identidade.pilarNivel).toBe(3);
-    expect(migrarFicha(structuredClone(antiga)).identidade.pilarNivel).toBe(3);
+  it('a migração monta o pilar (nível 3 quando ausente, versões 1 e 2) e respeita o nível salvo', () => {
+    const { pilar: _, ...semPilar } = clonar();
+    const legado = { ...semPilar, identidade: { ...clonar().identidade, pilarLuganico: 'Justiça' } };
+    expect(migrarFicha(legado).pilar.nivel).toBe(3);
+    expect(migrarFicha(structuredClone(antiga)).pilar).toMatchObject({ nome: 'Justiça', nivel: 3, nivelAplicado: 3 });
     const f = clonar();
-    f.identidade.pilarNivel = 5;
-    expect(migrarFicha(f).identidade.pilarNivel).toBe(5);
+    f.pilar.nivel = 5;
+    expect(migrarFicha(f).pilar.nivel).toBe(5);
   });
 
   it('alerta quando um poder exige pilar acima do atual; removido não alerta', () => {
@@ -285,17 +287,17 @@ describe('pilar', () => {
     poder(f, 'lugan_completo').requerPilar = 4;
     poder(f, 'fogo_real').requerPilar = 3;
     expect(alertasPilar(f)).toEqual([{ poderId: 'lugan_completo', nome: 'Lugan Completo', requer: 4, atual: 3 }]);
-    f.identidade.pilarNivel = 4;
+    f.pilar.nivel = 4;
     expect(alertasPilar(f)).toEqual([]);
-    f.identidade.pilarNivel = 1;
+    f.pilar.nivel = 1;
     poder(f, 'lugan_completo').tipo = 'removido';
     expect(alertasPilar(f).map((a) => a.poderId)).toEqual(['fogo_real']);
   });
 
-  it('a importação de JSON valida pilarNivel e requerPilar (ausentes são aceitos)', () => {
+  it('a importação de JSON valida o pilar e requerPilar (pilar ausente é aceito e montado na migração)', () => {
     const f = clonar();
-    expect(importarJson(JSON.stringify(f)).identidade.pilarNivel).toBe(3);
-    expect(() => importarJson(JSON.stringify({ ...f, identidade: { ...f.identidade, pilarNivel: 'três' } }))).toThrow(/pilarNivel/);
+    expect(importarJson(JSON.stringify(f)).pilar.nivel).toBe(3);
+    expect(() => importarJson(JSON.stringify({ ...f, pilar: { ...f.pilar, nivel: 'três' } }))).toThrow(/pilar\.nivel/);
     const poderes = f.poderes.map((p) => (p.id === 'fogo_real' ? { ...p, requerPilar: 'x' } : p));
     expect(() => importarJson(JSON.stringify({ ...f, poderes }))).toThrow(/requerPilar/);
   });

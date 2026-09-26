@@ -235,6 +235,28 @@ function secaoProtecoes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
       : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) => cartaoProtecao(ctx, r, p.id, p.uso !== null))));
 }
 
+/**
+ * Card "Pilar da Justiça nível N": Jikar, Ancestrais, Proteção do Dragão Vermelho (com o teste calculado) e o lembrete dos
+ * redutores por 5 h. Os textos do pilar têm marcadores vivos, resolvidos a cada mudança (subir o pilar muda o card).
+ */
+function secaoPilar(ctx: Contexto, r: () => ResumoBatalha): HTMLElement | null {
+  const inicial = r().pilar;
+  if (!inicial) return null;
+  const titulo = h('h2', {});
+  const teste = h('p', { class: 'valor-medio teste-pilar' });
+  const itens = inicial.textos.map(() => h('li', {}));
+  ctx.ligar(() => {
+    const pilar = r().pilar;
+    if (!pilar) return;
+    definirTexto(titulo, pilar.titulo);
+    definirTexto(teste, pilar.testeDragao ? `Teste do Dragão Vermelho: ${pilar.testeDragao}` : '');
+    teste.hidden = pilar.testeDragao === null;
+    itens.forEach((item, i) => definirTexto(item, pilar.textos[i] ?? ''));
+  });
+  return h('section', { class: 'cartao pilar', 'aria-label': 'Pilar' }, titulo, teste, h('ul', { class: 'lembretes' }, ...itens),
+    h('p', { class: 'detalhe' }, 'O nível do pilar sobe e desce na aba Identidade; os textos são editados na aba Poderes, em "Textos da batalha".'));
+}
+
 function secaoQuandoAtacado(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
   const defesas = h('p', { class: 'resumo' });
   ctx.ligar(() => definirTexto(defesas, r().defesas.map((d) => `${d.nome} ${d.rolagem.texto}`).join(' · ')));
@@ -277,6 +299,7 @@ export function abaBatalha(ctx: Contexto): HTMLElement {
     secaoAtaques(ctx, r),
     secaoDefesas(ctx, r),
     secaoProtecoes(ctx, r),
+    secaoPilar(ctx, r),
     secaoQuandoAtacado(ctx, r),
     secaoLembretes(ctx, r),
     h('p', { class: 'detalhe' }, 'Ações, reações e lembretes são editados na aba Poderes, na seção "Textos da batalha".'));

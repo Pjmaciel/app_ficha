@@ -43,6 +43,7 @@ const TOTAIS: Record<ChaveCombate, number> = {
  */
 const daPlanilha = (f: Ficha): Ficha => {
   poder(f, 'protecao_divina').nivel = 1;
+  poder(f, 'protecao_divina').pontosProprios = 1;
   return f;
 };
 

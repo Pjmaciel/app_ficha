@@ -13,6 +13,7 @@ import type {
   Tsu,
 } from '../model/types';
 import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
+import { pilarPadrao } from '../model/pilar-padrao';
 
 /** Regras do contrato v2 que a planilha não traz em células numéricas próprias. */
 const NIVEL_REFERENCIA = 41;
@@ -209,10 +210,12 @@ function descricaoDoPoder(lugan: XLSX.WorkSheet, id: string, linha: number): str
 
 function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
   return PODERES.map(({ id, nome, tipo, linha, usosPorDia, mostrarNaBatalha }) => {
+    const nivel = nivelOuNulo(lugan, `D${linha}`);
     const poder: Poder = {
       id,
       nome,
-      nivel: nivelOuNulo(lugan, `D${linha}`),
+      nivel,
+      pontosProprios: nivel,
       tipo,
       descricao: descricaoDoPoder(lugan, id, linha),
     };
@@ -354,13 +357,13 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
       jogador: texto(lugan, 'D8'),
       raca: texto(lugan, 'D9'),
       reino: texto(lugan, 'D10'),
-      pilarLuganico: texto(lugan, 'I7'),
-      pilarNivel: PILAR_NIVEL_PADRAO,
       nivel: numero(lugan, 'I8'),
       nivelLuganico: numero(lugan, 'I9'),
       basePv: numero(lugan, 'I10'),
       armaPrincipal: ARMA_PRINCIPAL,
     },
+    // O pilar lugânico vem da célula I7; o nível (aspecto do mundo) não está na planilha e parte do padrão.
+    pilar: pilarPadrao(texto(lugan, 'I7'), PILAR_NIVEL_PADRAO),
     regras: {
       pontosIniciais: primeiroNumero(lugan, 'B13'),
       bonusPorNivel: primeiroNumero(lugan, 'H13'),

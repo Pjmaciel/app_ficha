@@ -1,17 +1,76 @@
 {
   "versao": 2,
-  "revisaoDados": 4,
+  "revisaoDados": 5,
   "identidade": {
     "nome": "Alexsander Somar III",
     "jogador": "Pablo Maciel",
     "raca": "Meio Orc",
     "reino": "Sodraria",
-    "pilarLuganico": "Justiça",
     "nivel": 41,
     "nivelLuganico": 3,
     "basePv": 12,
-    "armaPrincipal": "Jikar",
-    "pilarNivel": 3
+    "armaPrincipal": "Jikar"
+  },
+  "pilar": {
+    "nome": "Justiça",
+    "nivel": 3,
+    "nivelAplicado": 3,
+    "pacotePorNivel": {
+      "lugan_completo": 2,
+      "protecao_divina": 1,
+      "campeao_do_combate_divino": 2,
+      "o_filho_de_hagashi": 4,
+      "lugan_da_batalha": 1,
+      "forca_das_montanhas_divinas": 1,
+      "golpe_devastador": 1,
+      "manipulador_de_tsu_real": 1,
+      "fogo_real": 2
+    },
+    "efeitos": [
+      {
+        "id": "teste_dragao",
+        "rotulo": "Teste da Proteção do Dragão Vermelho (parte fixa)",
+        "porPonto": 800
+      },
+      {
+        "id": "teste_dado",
+        "rotulo": "Teste da Proteção do Dragão Vermelho (dado)",
+        "porPonto": 0,
+        "fixo": 400
+      },
+      {
+        "id": "ancestrais",
+        "rotulo": "Samurais antigos convocados",
+        "porPonto": 0,
+        "fixo": 2000,
+        "unidade": "samurais"
+      },
+      {
+        "id": "redutor_teste",
+        "rotulo": "Redutor em testes de perícia e combate",
+        "porPonto": 0,
+        "fixo": 400
+      },
+      {
+        "id": "redutor_dano",
+        "rotulo": "Redutor no dado de dano",
+        "porPonto": 0,
+        "fixo": 2
+      },
+      {
+        "id": "redutor_horas",
+        "rotulo": "Duração do redutor depois do uso",
+        "porPonto": 0,
+        "fixo": 5,
+        "unidade": "h"
+      }
+    ],
+    "textos": [
+      "Portador de Jikar: +1d no dano e +3d×100 no ataque e na defesa; inimigos só desferem 1 ataque contra você e, contra um grupo, só metade ataca; aliados divinos em 3 km recebem +250 e não divinos +100 em ataque, defesa e dano; mentira, ilusão e invisibilidade não atingem você; a Jikar retorna pela sua vontade.",
+      "Ancestrais da Justiça: convoque em Kitai {pilar.ancestrais} samurais antigos de infantaria, todos de nível de personagem 20 e tropa de categoria 6.",
+      "Proteção do Dragão Vermelho: quando um Lugan em Shidenji tenta usar um poder contra Hagashi, você sente e o impede com um teste de nível do pilar ({pilar.nivel}) × {pilar.teste_dragao.porPonto} + 1d×{pilar.teste_dado}, sem dado mestre, contra o nível do poder em dados × 100. Quem falhar fica 6d semanas sem tentar afetar Hagashi.",
+      "Poderes do pilar usados para proteger o povo: durante o uso e por mais {pilar.redutor_horas} h, −{pilar.redutor_teste} em qualquer teste de perícia ou combate e −{pilar.redutor_dano} no dado de dano."
+    ]
   },
   "regras": {
     "pontosIniciais": 1018,
@@ -726,6 +785,8 @@
       "id": "velocidade_divina",
       "nome": "Velocidade Divina",
       "nivel": 2,
+      "pontosProprios": 2,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "descricao": "Dá uma ação de velocidade contra outro Lugan. Contra seres não lugânicos, dá três ações extras.",
       "escala": {
@@ -767,6 +828,8 @@
       "id": "lugan_da_batalha",
       "nome": "Lugan da Batalha",
       "nivel": 3,
+      "pontosProprios": 3,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "descricao": "+150 em qualquer ataque; +150 em qualquer defesa; +60 no final do dano",
       "escala": {
@@ -794,6 +857,8 @@
       "id": "golpe_devastador",
       "nome": "Golpe Devastador de Lugan",
       "nivel": 3,
+      "pontosProprios": 3,
+      "pontosDoPilar": 0,
       "tipo": "ativo",
       "descricao": "4d×100 no ataque; 3d×100 no multiplicador de dano.",
       "escala": {
@@ -828,6 +893,8 @@
       "id": "portador_da_jikar",
       "nome": "Portador da Jikar",
       "nivel": null,
+      "pontosProprios": null,
+      "pontosDoPilar": 0,
       "tipo": "item",
       "descricao": "[+1d] dano; +3d×100 ataque/defesa. Inimigos só fazem 1 ataque contra você. Aliados 3 km: divinos +250; não divinos +100. Ignora mentira, ilusão e invisibilidade. Contra grupo, só metade pode te atacar. Jikar retorna à vontade."
     },
@@ -835,6 +902,8 @@
       "id": "campeao_do_combate_divino",
       "nome": "Campeão do Combate Divino",
       "nivel": 3,
+      "pontosProprios": 3,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "descricao": "escolha a linha de arma da vida dele: Espada / Katana / Jikar; +140 nas rolagens de ataque usando essa arma; +140 nas rolagens de defesa usando essa arma; +40 no dano físico com essa arma; pressão de ataque em 4 km².",
       "escala": {
@@ -857,6 +926,8 @@
       "id": "forca_das_montanhas_divinas",
       "nome": "Força das Montanhas Divinas",
       "nivel": 1,
+      "pontosProprios": 1,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "descricao": "[+60] Força permanente; ataques que usam Força afetam 2 km²; causar terremoto em linha de 500 m por 4 km²; quem estiver no caminho testa Esquiva contra o ataque do Lugan; quem falhar sofre o dano.",
       "escala": {
@@ -878,6 +949,8 @@
       "id": "protecao_divina",
       "nome": "Proteção Divina",
       "nivel": 2,
+      "pontosProprios": 2,
+      "pontosDoPilar": 0,
       "tipo": "defensivo",
       "descricao": "1 rodada por dia de imunidade total a dano, divino ou não; +500 PV extras; proteção de área em 5 km²; absorve 200 de dano no cenário e em todos os envolvidos naquele ataque; pode escolher até 100 criaturas por dia para proteger; essas criaturas recebem 2 barras de CD e +15 em ataque, defesa e perícias; bônus de +150 para anular efeitos mentais divinos.",
       "escala": {
@@ -941,6 +1014,8 @@
       "id": "o_filho_de_hagashi",
       "nome": "O Filho de Hagashi",
       "nivel": 4,
+      "pontosProprios": 4,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "usosPorDia": 1,
       "descricao": "protege Hagashi contra dano em área de 100 km do reino; reduz 350 de dano por ponto, então 1.400 de proteção territorial; vincula 32.000 hagashianos fiéis; esses fiéis recebem proteção contra dano em área; fiéis ganham +48 em ataque e defesa quando Alexander desejar; esse bônus dura 8 horas e pode ser usado 1 vez a cada 24h; Alexander ganha +1 em ataque e defesa para cada 200 fiéis hagashianos; o dano dele aumenta +1 para cada 400 fiéis; a morte desses fiéis diminui esse poder.",
@@ -971,6 +1046,8 @@
       "id": "lugan_completo",
       "nome": "Lugan Completo",
       "nivel": 1,
+      "pontosProprios": 1,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "descricao": "voo de 280 km/h; altura máxima de voo de 3.000 m; +60 em qualquer ataque; +60 em qualquer defesa; +20 no dano; pressão de ataque em 1 km ao redor; bônus de +200 para anular efeitos mentais divinos; comunicação com Kitaicos; seguidores fiéis: 1d × 1.000.",
       "mostrarNaBatalha": true,
@@ -1026,6 +1103,8 @@
       "id": "manipulador_de_tsu_real",
       "nome": "Manipulador de Tsu Real",
       "nivel": 1,
+      "pontosProprios": 1,
+      "pontosDoPilar": 0,
       "tipo": "passivo",
       "descricao": "sua perícia vira Manipular Tsu Real; recebe +70 em Manipular Tsu Real; danos mágicos recebem +10; pode conjurar uma magia simultânea em 3 locais de Kitai; se a magia for em alvo, pode atingir 50 alvos simultâneos; pode dar +30 em def para companheiros Lugans.(nao ataca)",
       "escala": {
@@ -1060,6 +1139,8 @@
       "id": "fogo_real",
       "nome": "Fogo Real",
       "nivel": 2,
+      "pontosProprios": 2,
+      "pontosDoPilar": 0,
       "tipo": "ativo",
       "descricao": "Manipula fogo real em 2 km². Causa 400 dano/rodada. Contra divinos: ataques diretos recebem +200 dano. Alvos de água sofrem ×1,5 dano. Não divinos são incinerados ou testam Esquiva para sofrer 1/4.",
       "escala": {

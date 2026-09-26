@@ -86,6 +86,13 @@ export interface Poder {
   escala?: EscalaPoder;
   /** Aspecto do mundo (pilar) mínimo para o poder funcionar (ex.: honra 3); acima do pilar atual, a ficha alerta. */
   requerPilar?: number;
+  /**
+   * Pontos que o jogador e o mestre deram ao poder (editável; nulo = poder sem nível). O `nivel` do poder é derivado:
+   * pontosProprios + pontosDoPilar (nunca abaixo de zero), recalculado pelo motor (`aplicarPilar`).
+   */
+  pontosProprios?: number | null;
+  /** Pontos vindos do pilar: pacote do poder × (nível do pilar − nível já aplicado); derivado, pode ser negativo. */
+  pontosDoPilar?: number;
 }
 
 export type Elemento = 'fogo' | 'agua' | 'ar' | 'terra' | 'luz' | 'trevas';
@@ -141,6 +148,25 @@ export interface Regras {
   diferencaMaximaAtributos: number;
 }
 
+/**
+ * Pilar lugânico (aspecto do mundo), exibido como "Justiça 3". Subir de nível concede de novo o pacote de poderes;
+ * descer o retira. Os pontos do pilar em cada poder são `pacotePorNivel[id] × (nivel − nivelAplicado)`: os níveis até
+ * `nivelAplicado` já estão embutidos nos pontos próprios dos poderes, então a semente (Justiça 3, aplicado 3) não muda nada.
+ */
+export interface Pilar {
+  nome: string;
+  /** Aspecto do mundo, de 1 a 5. */
+  nivel: number;
+  /** Nível do pilar cujo pacote já está contado nos pontos próprios dos poderes (a base da conta). */
+  nivelAplicado: number;
+  /** Pontos que cada poder (por id) recebe a cada nível do pilar. */
+  pacotePorNivel: Record<string, number>;
+  /** Efeitos do pilar no nível atual (ex.: teste do Dragão Vermelho = 800 × nível); marcadores `{pilar.<id>}`. */
+  efeitos: EfeitoEscalavel[];
+  /** Textos do card do pilar na aba Batalha; aceitam marcadores vivos (`{pilar.nivel}`, `{pilar.<efeito>}`). */
+  textos: string[];
+}
+
 export interface Ficha {
   versao: 2;
   /** Revisão dos dados da planilha embutida (0 quando ausente); permite avisar o jogador de uma versão mais nova. */
@@ -150,14 +176,13 @@ export interface Ficha {
     jogador: string;
     raca: string;
     reino: string;
-    pilarLuganico: string;
-    /** Nível do aspecto do mundo do pilar lugânico (1 a 5); exibido como "Justiça 3". */
-    pilarNivel: number;
     nivel: number;
     nivelLuganico: number;
     basePv: number;
     armaPrincipal: string;
   };
+  /** Pilar lugânico (aspecto do mundo): nome, nível 1 a 5, pacote de poderes por nível e efeitos escaláveis. */
+  pilar: Pilar;
   regras: Regras;
   atributos: Record<AtributoId, Atributo>;
   pericias: Pericia[];

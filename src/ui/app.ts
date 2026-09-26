@@ -2,7 +2,7 @@
 // Regra de ouro: digitar em um campo só recalcula os textos derivados (funções registradas com
 // `ligar`); os campos nunca são recriados durante a digitação, então o foco não se perde.
 import {
-  alertaBonusNivel, alertasPilar, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
+  alertaBonusNivel, alertasPilar, aplicarPilar, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
   pilarTexto, usoDoPoder, usosPorDiaDoPoder,
 } from '../engine';
 import type { Ficha } from '../model/types';
@@ -52,11 +52,11 @@ export function iniciar(raiz: HTMLElement): void {
   const ctx: Contexto = {
     ficha: () => ficha,
     sessao: () => sessao,
-    mudou: () => { persistir(); atualizarTudo(); },
+    mudou: () => { aplicarPilar(ficha); persistir(); atualizarTudo(); },
     ligar: (fn) => { fn(); ligacoesAba.push(fn); },
     reconstruir: () => renderConteudo(),
     trocarFicha: (nova, reiniciarSessao = false) => {
-      ficha = nova;
+      ficha = aplicarPilar(nova);
       if (reiniciarSessao) sessao = novaSessao(ficha);
       persistir();
       renderConteudo();
@@ -137,7 +137,7 @@ export function iniciar(raiz: HTMLElement): void {
     }
     for (const a of alertasPilar(ficha)) {
       alertas.append(h('div', { class: 'alerta-caixa', role: 'alert' },
-        h('p', {}, `${a.nome} exige o aspecto do mundo ${ficha.identidade.pilarLuganico || 'do pilar'} ${a.requer}, e o pilar atual está em ${a.atual}: o poder só funciona quando o aspecto chegar a ${a.requer}.`)));
+        h('p', {}, `${a.nome} exige o aspecto do mundo ${ficha.pilar.nome || 'do pilar'} ${a.requer}, e o pilar atual está em ${a.atual}: o poder só funciona quando o aspecto chegar a ${a.requer}.`)));
     }
     const d = diferencaAtributos(ficha);
     if (d.excedeu) {

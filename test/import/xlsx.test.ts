@@ -19,6 +19,7 @@ describe('importarXlsx', () => {
     // (confirmado pelo jogador, revisão 4), o que muda PV (3404 → 3904), usos (1 → 2) e os efeitos por nível.
     const esperado = structuredClone(alexsander) as unknown as Ficha;
     esperado.poderes.find((p) => p.id === 'protecao_divina')!.nivel = 1;
+    esperado.poderes.find((p) => p.id === 'protecao_divina')!.pontosProprios = 1;
     expect(migrarFicha(ficha)).toStrictEqual({ ...esperado, revisaoDados: 0 });
   });
 
@@ -30,7 +31,8 @@ describe('importarXlsx', () => {
   it('é uma ficha versão 2 de nível 41 com pilar Justiça', () => {
     expect(ficha.versao).toBe(2);
     expect(ficha.identidade.nivel).toBe(41);
-    expect(ficha.identidade.pilarLuganico).toBe('Justiça');
+    expect(ficha.pilar.nome).toBe('Justiça');
+    expect(ficha.pilar.nivel).toBe(3);
     expect(ficha.identidade.nome).toBe('Alexsander Somar III');
     expect(ficha.xp).toEqual({ total: 12, atual: 12 });
   });

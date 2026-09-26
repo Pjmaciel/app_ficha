@@ -1,5 +1,6 @@
 import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao, textoVivo } from '../model/batalha-padrao';
 import { escalaPadrao } from '../model/escalas-padrao';
+import { limitarNivelPilar, pilarPadrao } from '../model/pilar-padrao';
 import type {
   AcaoBatalha,
   Atributo,
@@ -12,6 +13,7 @@ import type {
   FonteDerivada,
   GolpeEspecial,
   PatamarPoder,
+  Pilar,
   Poder,
   Reacao,
   Regras,
@@ -204,32 +206,56 @@ function valorDoMarcador(f: Ficha, corpo: string): number | null {
   return total;
 }
 
-/**
- * Resolve os marcadores vivos do texto: `{poder.<id>.<efeito>}`, `{poder.<id>.nivel}` (e `.porPonto`/`.fixo` do efeito)
- * e `{soma:<id>.<efeito>+<id>.<efeito>}`. O que não for um marcador conhecido fica como está, para o erro aparecer.
- */
-export function resolverTexto(f: Ficha, texto: string): string {
-  return texto.replace(MARCADOR, (inteiro, corpo: string) => {
-    const v = valorDoMarcador(f, corpo);
-    return v === null ? inteiro : formatarNumero(v);
-  });
+/** Valor de um marcador do pilar (`pilar.nivel`, `pilar.<efeito>[.porPonto|.fixo]`); nulo se o efeito não existe. */
+function valorDoMarcadorPilar(f: Ficha, corpo: string): number | null {
+  const partes = corpo.split('.');
+  if (partes[0] !== 'pilar' || partes.length < 2 || partes.length > 3 || partes.some((x) => x === '')) return null;
+  const parte = partes[2];
+  if (parte !== undefined && parte !== 'porPonto' && parte !== 'fixo') return null;
+  if (partes[1] === 'nivel' && parte === undefined) return f.pilar.nivel;
+  const e = efeitosDoPilar(f).find((x) => x.id === partes[1]);
+  if (!e) return null;
+  return parte === 'porPonto' ? e.porPonto : parte === 'fixo' ? e.fixo : e.valor;
 }
 
-/** Marcadores do texto que parecem vivos (`{poder...}`, `{soma:...}`) mas não resolvem: poder ou efeito inexistente. */
+/** Texto do marcador resolvido; nulo se não for um marcador vivo conhecido. Os do pilar saem sem separador de milhar (rolagens: 2400 + 1d×400). */
+function resolverMarcador(f: Ficha, corpo: string): string | null {
+  if (corpo.startsWith('pilar.')) {
+    const v = valorDoMarcadorPilar(f, corpo);
+    return v === null ? null : String(v);
+  }
+  const v = valorDoMarcador(f, corpo);
+  return v === null ? null : formatarNumero(v);
+}
+
+/**
+ * Resolve os marcadores vivos do texto: `{poder.<id>.<efeito>}`, `{poder.<id>.nivel}` (e `.porPonto`/`.fixo` do efeito),
+ * `{soma:<id>.<efeito>+<id>.<efeito>}` e os do pilar, `{pilar.nivel}` e `{pilar.<efeito>}`. O que não for um marcador
+ * conhecido fica como está, para o erro aparecer.
+ */
+export function resolverTexto(f: Ficha, texto: string): string {
+  return texto.replace(MARCADOR, (inteiro, corpo: string) => resolverMarcador(f, corpo) ?? inteiro);
+}
+
+/** Marcadores do texto que parecem vivos (`{poder...}`, `{soma:...}`, `{pilar...}`) mas não resolvem: poder ou efeito inexistente. */
 export function marcadoresInvalidos(f: Ficha, texto: string): string[] {
   const invalidos: string[] = [];
   for (const [inteiro, corpo] of texto.matchAll(MARCADOR)) {
-    if ((corpo.startsWith('poder.') || corpo.startsWith('soma:')) && valorDoMarcador(f, corpo) === null) invalidos.push(inteiro);
+    if (/^(poder\.|soma:|pilar\.)/.test(corpo) && resolverMarcador(f, corpo) === null) invalidos.push(inteiro);
   }
   return invalidos;
 }
 
 /** Marcadores que a ficha aceita hoje, com o valor no nível atual (ajuda da edição de textos). */
 export function marcadoresDisponiveis(f: Ficha): { marcador: string; rotulo: string; valor: number }[] {
-  return f.poderes.filter((p) => p.tipo !== 'removido').flatMap((p) => [
-    { marcador: `{poder.${p.id}.nivel}`, rotulo: `${p.nome}: nível`, valor: nivelDoPoder(p) },
-    ...efeitosDoPoder(p).map((e) => ({ marcador: `{poder.${p.id}.${e.id}}`, rotulo: `${p.nome}: ${e.rotulo}`, valor: e.valor })),
-  ]);
+  return [
+    ...f.poderes.filter((p) => p.tipo !== 'removido').flatMap((p) => [
+      { marcador: `{poder.${p.id}.nivel}`, rotulo: `${p.nome}: nível`, valor: nivelDoPoder(p) },
+      ...efeitosDoPoder(p).map((e) => ({ marcador: `{poder.${p.id}.${e.id}}`, rotulo: `${p.nome}: ${e.rotulo}`, valor: e.valor })),
+    ]),
+    { marcador: '{pilar.nivel}', rotulo: 'Pilar: nível', valor: f.pilar.nivel },
+    ...efeitosDoPilar(f).map((e) => ({ marcador: `{pilar.${e.id}}`, rotulo: `Pilar: ${e.rotulo}`, valor: e.valor })),
+  ];
 }
 
 export interface PatamarAtingido { nivel: number; texto: string; atingido: boolean }
@@ -263,8 +289,8 @@ export function linhasDeEfeitos(p: Poder): LinhaEfeito[] {
 
 /** Pilar como exibido na ficha: "Justiça 3" (só o nível se o pilar não tem nome; "—" se nenhum dos dois). */
 export function pilarTexto(f: Ficha): string {
-  const nome = f.identidade.pilarLuganico.trim();
-  const nivel = f.identidade.pilarNivel;
+  const nome = f.pilar.nome.trim();
+  const nivel = f.pilar.nivel;
   if (nome === '') return nivel > 0 ? String(nivel) : '—';
   return `${nome} ${nivel}`;
 }
@@ -273,10 +299,85 @@ export interface AlertaPilar { poderId: string; nome: string; requer: number; at
 
 /** Poderes ativos que exigem um aspecto do mundo (pilar) acima do atual: só funcionam quando o aspecto chega ao nível pedido. */
 export function alertasPilar(f: Ficha): AlertaPilar[] {
-  const atual = f.identidade.pilarNivel;
+  const atual = f.pilar.nivel;
   return f.poderes
     .filter((p) => p.tipo !== 'removido' && p.requerPilar !== undefined && p.requerPilar > atual)
     .map((p) => ({ poderId: p.id, nome: p.nome, requer: p.requerPilar as number, atual }));
+}
+
+// ---------- Pilar com escala: pacote de poderes por nível, efeitos e textos ----------
+
+/** Pontos que o pilar dá ao poder: pacote × (nível do pilar − nível já aplicado); negativo quando o pilar desce abaixo da base. */
+export function pontosDoPilar(f: Ficha, p: Poder): number {
+  return (f.pilar.pacotePorNivel[p.id] ?? 0) * (f.pilar.nivel - f.pilar.nivelAplicado);
+}
+
+/** Nível do poder a partir dos pontos: próprios + pilar, nunca abaixo de zero; nulo se o poder não tem nível e o pilar não mexe nele. */
+export function nivelPeloPilar(proprios: number | null, doPilar: number): number | null {
+  if (proprios === null && doPilar === 0) return null;
+  return Math.max(0, (proprios ?? 0) + doPilar);
+}
+
+/**
+ * Recalcula, na própria ficha, o que o pilar deriva: limita o nível do pilar a 1..5 e, em cada poder, grava
+ * `pontosDoPilar` e `nivel` (= próprios + pilar, nunca abaixo de 0). Poder sem `pontosProprios` (ficha montada à
+ * mão) recebe o nível declarado como total atual. Idempotente; chamada na migração, ao mudar o pilar e a cada edição.
+ */
+export function aplicarPilar(f: Ficha): Ficha {
+  f.pilar.nivel = limitarNivelPilar(f.pilar.nivel);
+  for (const p of f.poderes) {
+    const doPilar = pontosDoPilar(f, p);
+    if (p.pontosProprios === undefined) {
+      p.pontosProprios = p.nivel === null && doPilar === 0 ? null : Math.max(0, (p.nivel ?? 0) - doPilar);
+    }
+    p.pontosDoPilar = doPilar;
+    p.nivel = nivelPeloPilar(p.pontosProprios, doPilar);
+  }
+  return f;
+}
+
+/** Ficha (nova) com o pilar no nível dado, limitado a 1..5: o pacote entra ou sai e todas as escalas recalculam. */
+export function definirNivelPilar(f: Ficha, nivel: number): Ficha {
+  const nova = structuredClone(f);
+  nova.pilar.nivel = limitarNivelPilar(nivel);
+  return aplicarPilar(nova);
+}
+
+/** Sobe o pilar um nível (no máximo 5). */
+export const subirPilar = (f: Ficha): Ficha => definirNivelPilar(f, f.pilar.nivel + 1);
+
+/** Desce o pilar um nível (no mínimo 1). */
+export const descerPilar = (f: Ficha): Ficha => definirNivelPilar(f, f.pilar.nivel - 1);
+
+/** Poderes que mudam de nível se o pilar for para `nivel`: o total de hoje e o de depois. */
+export function previaPilar(f: Ficha, nivel: number): { poderId: string; nome: string; de: number | null; para: number | null }[] {
+  const depois = definirNivelPilar(f, nivel);
+  return f.poderes.flatMap((p, i) => {
+    const para = depois.poderes[i].nivel;
+    return p.nivel === para ? [] : [{ poderId: p.id, nome: p.nome, de: p.nivel, para }];
+  });
+}
+
+/** Efeitos do pilar no nível atual (valor = fixo + porPonto × ⌊nível ÷ aCada⌋); se um id se repete, vale o primeiro. */
+export function efeitosDoPilar(f: Ficha): EfeitoResolvido[] {
+  const lista: EfeitoResolvido[] = [];
+  for (const e of f.pilar.efeitos) {
+    if (lista.some((x) => x.id === e.id)) continue;
+    lista.push({
+      id: e.id, rotulo: e.rotulo, porPonto: e.porPonto, fixo: e.fixo ?? 0, aCada: e.aCada !== undefined && e.aCada > 0 ? e.aCada : 1,
+      unidade: e.unidade, valor: valorDoEfeito(e, f.pilar.nivel), reservado: false,
+    });
+  }
+  return lista;
+}
+
+/** Teste da Proteção do Dragão Vermelho: nível do pilar × 800 + 1d×400 (efeitos `teste_dragao` e `teste_dado`); nulo sem esses efeitos. */
+export function testeDragaoVermelho(f: Ficha): { base: number; dado: number; texto: string } | null {
+  const efeitos = efeitosDoPilar(f);
+  const base = efeitos.find((e) => e.id === 'teste_dragao');
+  const dado = efeitos.find((e) => e.id === 'teste_dado');
+  if (!base || !dado) return null;
+  return { base: base.valor, dado: dado.valor, texto: `${base.valor} + 1d×${dado.valor}` };
 }
 
 /** Base do atributo: bônus de nível + pontos distribuídos (sem extras). */
@@ -566,6 +667,16 @@ export interface ProtecaoBatalha {
   resumo: string;
 }
 
+/** Card "Pilar da Justiça nível N" da aba Batalha, com os textos do pilar já resolvidos. */
+export interface PilarBatalha {
+  titulo: string;
+  nome: string;
+  nivel: number;
+  /** Teste da Proteção do Dragão Vermelho calculado (ex.: "2400 + 1d×400"); nulo se o pilar não tem esses efeitos. */
+  testeDragao: string | null;
+  textos: string[];
+}
+
 export interface ResumoBatalha {
   pv: { atual: number; total: number };
   fadiga: number;
@@ -582,6 +693,8 @@ export interface ResumoBatalha {
   protecoes: ProtecaoBatalha[];
   reacoes: Reacao[];
   lembretes: string[];
+  /** Card do pilar; nulo quando o pilar não tem textos nem efeitos. */
+  pilar: PilarBatalha | null;
   /** Todos os poderes consumíveis, com os usos restantes. */
   usos: UsoPoder[];
 }
@@ -602,6 +715,24 @@ function protecaoDoPoder(f: Ficha, p: Poder, uso: UsoPoder | null): ProtecaoBata
   return {
     id: p.id, nome: p.nome, nivel: p.nivel, descricao: resolverTexto(f, p.descricao), uso,
     efeitos, patamares, proximoPatamar: proximo, resumo: partes.join('; '),
+  };
+}
+
+/** Título do card do pilar: "Pilar da Justiça nível 3" (só "Pilar nível N" sem nome). */
+export function tituloPilar(f: Ficha): string {
+  const nome = f.pilar.nome.trim();
+  return nome === '' ? `Pilar nível ${f.pilar.nivel}` : `Pilar da ${nome} nível ${f.pilar.nivel}`;
+}
+
+/** Card do pilar da aba Batalha; nulo se o pilar não traz textos nem efeitos. */
+function pilarDaBatalha(f: Ficha): PilarBatalha | null {
+  if (f.pilar.textos.length === 0 && f.pilar.efeitos.length === 0) return null;
+  return {
+    titulo: tituloPilar(f),
+    nome: f.pilar.nome.trim(),
+    nivel: f.pilar.nivel,
+    testeDragao: testeDragaoVermelho(f)?.texto ?? null,
+    textos: f.pilar.textos.map((t) => resolverTexto(f, t)),
   };
 }
 
@@ -645,6 +776,7 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
     protecoes: f.poderes.filter(mostraNaBatalha).map((p) => protecaoDoPoder(f, p, usoOuNulo(p))),
     reacoes: f.reacoes.map((r) => ({ situacao: resolverTexto(f, r.situacao), resposta: resolverTexto(f, r.resposta) })),
     lembretes: f.lembretes.map((t) => resolverTexto(f, t)),
+    pilar: pilarDaBatalha(f),
     usos: f.poderes.filter(poderUsavel).map((p) => usoDoPoder(p, sessao)),
   };
 }
@@ -668,7 +800,7 @@ const FIEIS_POR_PADRAO: Record<ChaveCombate, number | null> = {
 
 /** Forma mínima da ficha versão 1 lida pela migração (o restante é ignorado). */
 interface FichaV1 {
-  identidade: Omit<Ficha['identidade'], 'armaPrincipal' | 'pilarNivel'>;
+  identidade: Omit<Ficha['identidade'], 'armaPrincipal'> & { pilarLuganico: string };
   pontosIniciais: number;
   atributos: Record<AtributoId, { bonus: number; pontos: number; bonusExtra: number }>;
   pericias: Ficha['pericias'];
@@ -714,10 +846,12 @@ function migrarV1(v1: FichaV1): Ficha {
     return poder;
   });
 
-  return {
+  const { pilarLuganico, ...identidade } = v1.identidade;
+  return aplicarPilar({
     versao: 2,
     revisaoDados: 0,
-    identidade: { ...v1.identidade, armaPrincipal: '', pilarNivel: PILAR_NIVEL_PADRAO },
+    identidade: { ...identidade, armaPrincipal: '' },
+    pilar: pilarPadrao(pilarLuganico, PILAR_NIVEL_PADRAO),
     regras: { pontosIniciais: v1.pontosIniciais, ...REGRAS_PADRAO },
     atributos,
     pericias: v1.pericias,
@@ -732,21 +866,27 @@ function migrarV1(v1: FichaV1): Ficha {
     reacoes: reacoesPadrao(),
     fieis: 0,
     xp: v1.xp,
-  };
+  });
 }
 
-/** Ficha versão 2 salva antes da aba Batalha: os campos dela podem faltar. */
-type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados' | 'identidade'> &
-  Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados'>> & {
-    identidade: Omit<Ficha['identidade'], 'pilarNivel'> & { pilarNivel?: number };
+/**
+ * Ficha versão 2 salva antes da aba Batalha ou do pilar com escala: os campos dela podem faltar, e o pilar pode
+ * estar ainda em `identidade` (`pilarLuganico` e `pilarNivel`).
+ */
+type FichaV2Anterior = Omit<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados' | 'identidade' | 'pilar'> &
+  Partial<Pick<Ficha, 'acoes' | 'lembretes' | 'reacoes' | 'revisaoDados' | 'pilar'>> & {
+    identidade: Ficha['identidade'] & { pilarLuganico?: string; pilarNivel?: number };
   };
+
+/** Versão 2 já com os campos da aba Batalha, mas ainda sem o pilar montado. */
+type FichaSemPilar = Omit<Ficha, 'pilar' | 'identidade'> & Pick<FichaV2Anterior, 'pilar' | 'identidade'>;
 
 /**
  * Completa a versão 2 com os valores padrão da aba Batalha. Cada lista ausente recebe os textos iniciais.
  * Só quando as três faltam (ficha anterior à aba) o Golpe Devastador também ganha usos por dia iguais aos
  * seus pontos e a pressão padrão; depois disso, apagar esses campos é uma escolha do jogador e é respeitada.
  */
-function completarBatalha(f: FichaV2Anterior): Ficha {
+function completarBatalha(f: FichaV2Anterior): FichaSemPilar {
   const anterior = f.acoes === undefined && f.lembretes === undefined && f.reacoes === undefined;
   if (anterior) {
     for (const g of f.golpes) {
@@ -757,12 +897,34 @@ function completarBatalha(f: FichaV2Anterior): Ficha {
   }
   return {
     ...f,
-    identidade: { ...f.identidade, pilarNivel: f.identidade.pilarNivel ?? PILAR_NIVEL_PADRAO },
     revisaoDados: f.revisaoDados ?? 0,
     acoes: f.acoes?.map((a) => ({ ...a, rolagem: textoVivo(a.rolagem), notas: textoVivo(a.notas) })) ?? acoesPadrao(),
     lembretes: f.lembretes?.map(textoVivo) ?? lembretesPadrao(),
     reacoes: f.reacoes?.map((r) => ({ ...r, resposta: textoVivo(r.resposta) })) ?? reacoesPadrao(),
   };
+}
+
+/**
+ * Monta `Ficha.pilar` na versão 2 que ainda o guarda em `identidade` (`pilarLuganico`, `pilarNivel`) ou não o tem:
+ * a semente do livro (Justiça traz pacote, efeitos e textos) com o nível salvo (3 quando ausente) e `nivelAplicado` =
+ * esse nível, então nenhum ponto de poder muda. Um pilar já salvo é respeitado; só os campos ausentes são completados.
+ * Os campos antigos saem de `identidade`. Poder sem `pontosProprios` recebe o nível atual (ver `aplicarPilar`).
+ */
+function completarPilar(f: FichaSemPilar): Ficha {
+  const { pilarLuganico, pilarNivel, ...identidade } = f.identidade;
+  const salvo = f.pilar;
+  const nome = salvo?.nome ?? pilarLuganico ?? '';
+  const nivel = limitarNivelPilar(salvo?.nivel ?? pilarNivel ?? PILAR_NIVEL_PADRAO);
+  const semente = pilarPadrao(nome, nivel);
+  const pilar: Pilar = {
+    nome,
+    nivel,
+    nivelAplicado: typeof salvo?.nivelAplicado === 'number' ? Math.max(0, Math.round(salvo.nivelAplicado)) : semente.nivelAplicado,
+    pacotePorNivel: salvo?.pacotePorNivel ?? semente.pacotePorNivel,
+    efeitos: salvo?.efeitos ?? semente.efeitos,
+    textos: salvo?.textos ?? semente.textos,
+  };
+  return { ...f, revisaoDados: f.revisaoDados ?? 0, identidade, pilar };
 }
 
 /** Retira da lista as fontes manuais com o nome dado; devolve a soma retirada, ou nulo se não havia nenhuma. */
@@ -862,7 +1024,7 @@ export function migrarFicha(json: unknown): Ficha {
     throw new Error('Ficha inválida: o conteúdo deve ser um objeto.');
   }
   const versao = (json as { versao?: unknown }).versao;
-  if (versao === 2) return aplicarEscalas(completarBatalha(structuredClone(json as FichaV2Anterior)));
+  if (versao === 2) return aplicarEscalas(aplicarPilar(completarPilar(completarBatalha(structuredClone(json as FichaV2Anterior)))));
   if (versao === 1) return migrarV1(structuredClone(json as FichaV1));
   throw new Error(`Ficha inválida: versão não suportada (${String(versao)}); esperadas 1 ou 2.`);
 }

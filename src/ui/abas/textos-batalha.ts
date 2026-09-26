@@ -65,7 +65,7 @@ function ajudaMarcadores(ctx: Contexto): HTMLElement {
     h('p', { class: 'detalhe' },
       'O texto guarda o marcador e o número aparece na hora de exibir: subir o poder muda tudo junto. '
       + 'Use {poder.<poder>.<efeito>}, {poder.<poder>.nivel} e {soma:<poder>.<efeito>+<poder>.<efeito>}; '
-      + '{poder.<poder>.<efeito>.porPonto} traz o valor por ponto.'),
+      + '{poder.<poder>.<efeito>.porPonto} traz o valor por ponto. Os números do pilar são {pilar.nivel} e {pilar.<efeito>}.'),
     lista);
 }
 
@@ -97,6 +97,16 @@ export function secaoTextosBatalha(ctx: Contexto): HTMLElement {
         campo('Situação', entradaTexto(x.situacao, (v) => { x.situacao = v; mudou(); }, 'Situação')),
         campo('Resposta', areaTexto(x.resposta, (v) => { x.resposta = v; mudou(); })),
         previaViva(ctx, () => `${x.situacao}: ${x.resposta}`),
+      ],
+    }),
+    editorLista<string>(ctx, f().pilar.textos, {
+      titulo: 'Card do pilar', adicionar: 'Adicionar texto do pilar', vazio: 'Nenhum texto do pilar cadastrado.',
+      ajuda: 'Textos do card "Pilar da Justiça nível N" da aba Batalha. Aceitam {pilar.nivel} e {pilar.<efeito>}: subir o pilar muda os números.',
+      rotuloItem: (i) => `Texto do pilar ${i + 1}`,
+      novo: () => '',
+      campos: (texto, i, mudou) => [
+        campo('Texto', areaTexto(texto, (v) => { f().pilar.textos[i] = v; mudou(); })),
+        previaViva(ctx, () => f().pilar.textos[i] ?? ''),
       ],
     }),
     editorLista<string>(ctx, f().lembretes, {

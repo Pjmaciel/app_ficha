@@ -1,5 +1,5 @@
 // Aba Poderes: cadastro completo; poderes do tipo "removido" continuam listados, em cinza.
-import { comSinal, efeitosDoPoder, formatarNumero, mostraNaBatalha, usosPorDiaDoPoder } from '../../engine';
+import { comSinal, efeitosDoPoder, formatarNumero, mostraNaBatalha, pontosDoPilar, usosPorDiaDoPoder } from '../../engine';
 import type { AtributoId, ChaveCombate, EfeitoEscalavel, EscalaPoder, PatamarPoder, Poder, TipoPoder } from '../../model/types';
 import { ATRIBUTOS, CHAVES_COMBATE, previaViva, ROTULO_ATRIBUTO, ROTULO_COMBATE, ROTULO_TIPO_PODER } from '../componentes';
 import type { Contexto } from '../contexto';
@@ -214,6 +214,18 @@ function secaoEscala(ctx: Contexto, p: Poder, usos: HTMLInputElement): HTMLEleme
     secaoPatamares(ctx, p));
 }
 
+/** "Próprios 2 + pilar 1 = nível 3": de onde vem o nível do poder (refeita a cada mudança). */
+function linhaPilar(ctx: Contexto, p: Poder): HTMLElement {
+  const linha = h('p', { class: 'detalhe nivel-pilar' });
+  ctx.ligar(() => {
+    const pilar = pontosDoPilar(ctx.ficha(), p);
+    const pacote = ctx.ficha().pilar.pacotePorNivel[p.id] ?? 0;
+    definirTexto(linha, `Próprios ${p.pontosProprios ?? 0} + pilar ${pilar} = nível total ${p.nivel ?? 0}`
+      + (pacote !== 0 ? ` (pacote ${pacote} × ${ctx.ficha().pilar.nivel - ctx.ficha().pilar.nivelAplicado} nível(is) do pilar acima da base)` : ''));
+  });
+  return linha;
+}
+
 export function abaPoderes(ctx: Contexto): HTMLElement {
   const f = ctx.ficha;
   const lista = h('div', { class: 'lista-poderes' });
@@ -244,7 +256,12 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     raiz.append(
       h('div', { class: 'campos' },
         campo('Nome', nome),
-        campo('Nível (vazio = sem nível)', entradaNumero(p.nivel, (v) => { p.nivel = v; ctx.mudou(); }, { min: 0, aceitaVazio: true })),
+        campo('Pontos próprios (vazio = sem nível)', entradaNumero(p.pontosProprios ?? p.nivel, (v) => { p.pontosProprios = v; ctx.mudou(); }, { min: 0, aceitaVazio: true })),
+        campo('Pacote do pilar por nível do pilar', entradaNumero(f().pilar.pacotePorNivel[p.id] ?? null, (v) => {
+          if (v === null || v === 0) delete f().pilar.pacotePorNivel[p.id];
+          else f().pilar.pacotePorNivel[p.id] = v;
+          ctx.mudou();
+        }, { aceitaVazio: true })),
         campo('Tipo', tipo),
         campo('Custo de fadiga', entradaOpcional('custoFadiga')),
         campo('Usos por dia', usos),
@@ -253,6 +270,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
           else p.requerPilar = v;
           ctx.mudou();
         }, { min: 0, aceitaVazio: true }))),
+      linhaPilar(ctx, p),
       campo('Descrição', descricao),
       previaViva(ctx, () => p.descricao),
       secaoEscala(ctx, p, usos),
@@ -285,7 +303,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     h('button', {
       type: 'button', class: 'destaque',
       onclick: () => {
-        f().poderes.push({ id: novoIdItem('poder'), nome: 'Novo poder', nivel: null, tipo: 'passivo', descricao: '' });
+        f().poderes.push({ id: novoIdItem('poder'), nome: 'Novo poder', nivel: null, pontosProprios: null, tipo: 'passivo', descricao: '' });
         desenhar(f().poderes.length - 1);
         ctx.mudou();
       },

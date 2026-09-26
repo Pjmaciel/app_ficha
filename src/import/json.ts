@@ -40,20 +40,20 @@ function exigirFontes(v: unknown, caminho: string): void {
 const CAMPOS_ESCALA_NUMERICOS = ['danoPorNivel', 'pvPorNivel', 'usosPorNivel', 'fieisPorNivel', 'dadosAtaquePorNivel', 'dadosDanoPorNivel'];
 
 /** Valida os efeitos escaláveis: id, rótulo e porPonto obrigatórios; fixo, unidade e aCada opcionais (aCada positivo). */
-function exigirEfeitos(efeitos: unknown, id: string): void {
+function exigirEfeitos(efeitos: unknown, quem: string): void {
   if (efeitos === undefined) return;
-  exigir(Array.isArray(efeitos), `poder ${id} com escala.efeitos inválido (deve ser uma lista).`);
+  exigir(Array.isArray(efeitos), `${quem} com escala.efeitos inválido (deve ser uma lista).`);
   const vistos = new Set<string>();
   for (const e of efeitos) {
     exigir(
       ehObjeto(e) && typeof e.id === 'string' && e.id !== '' && !/[.{}\s]/.test(e.id) && typeof e.rotulo === 'string' && ehNumero(e.porPonto),
-      `poder ${id} com efeito inválido (id sem pontos, chaves ou espaços, rótulo em texto e porPonto numérico).`,
+      `${quem} com efeito inválido (id sem pontos, chaves ou espaços, rótulo em texto e porPonto numérico).`,
     );
-    exigir(!vistos.has(e.id), `poder ${id} com efeito repetido (${e.id}).`);
+    exigir(!vistos.has(e.id), `${quem} com efeito repetido (${e.id}).`);
     vistos.add(e.id);
-    exigir(e.fixo === undefined || ehNumero(e.fixo), `poder ${id}, efeito ${e.id}: fixo não numérico.`);
-    exigir(e.unidade === undefined || typeof e.unidade === 'string', `poder ${id}, efeito ${e.id}: unidade deve ser texto.`);
-    exigir(e.aCada === undefined || (ehNumero(e.aCada) && (e.aCada as number) > 0), `poder ${id}, efeito ${e.id}: aCada deve ser um número positivo.`);
+    exigir(e.fixo === undefined || ehNumero(e.fixo), `${quem}, efeito ${e.id}: fixo não numérico.`);
+    exigir(e.unidade === undefined || typeof e.unidade === 'string', `${quem}, efeito ${e.id}: unidade deve ser texto.`);
+    exigir(e.aCada === undefined || (ehNumero(e.aCada) && (e.aCada as number) > 0), `${quem}, efeito ${e.id}: aCada deve ser um número positivo.`);
   }
 }
 
@@ -79,7 +79,7 @@ function exigirEscala(escala: unknown, id: string): void {
       `poder ${id} com escala.ataquePorNivel inválido (chaves de combate com valores numéricos).`,
     );
   }
-  exigirEfeitos(escala.efeitos, id);
+  exigirEfeitos(escala.efeitos, `poder ${id}`);
   exigirPatamares(escala.patamares, id);
   const atributo = escala.atributoPorNivel;
   if (atributo !== undefined) {
@@ -120,15 +120,41 @@ function exigirTsu(tsu: unknown): void {
   }
 }
 
-function exigirIdentidade(identidade: unknown, textos: string[]): asserts identidade is Objeto {
+function exigirIdentidade(identidade: unknown, textos: string[], opcionais: string[] = []): asserts identidade is Objeto {
   exigir(ehObjeto(identidade), 'campo identidade ausente.');
   for (const campo of textos) {
     exigir(typeof identidade[campo] === 'string', `identidade.${campo} deve ser texto.`);
+  }
+  for (const campo of opcionais) {
+    exigir(identidade[campo] === undefined || typeof identidade[campo] === 'string', `identidade.${campo} deve ser texto.`);
   }
   for (const campo of ['nivel', 'nivelLuganico', 'basePv']) {
     exigir(ehNumero(identidade[campo]), `identidade.${campo} deve ser numérico.`);
   }
   exigir(identidade.pilarNivel === undefined || ehNumero(identidade.pilarNivel), 'identidade.pilarNivel deve ser numérico.');
+}
+
+/**
+ * Valida o pilar (aspecto do mundo): nome, nível e nível aplicado numéricos, pacote por poder numérico, efeitos
+ * escaláveis e textos. Ausente é aceito: a migração monta o pilar a partir de `identidade.pilarLuganico` e `pilarNivel`.
+ */
+function exigirPilar(pilar: unknown): void {
+  if (pilar === undefined) return;
+  exigir(ehObjeto(pilar), 'pilar deve ser um objeto.');
+  exigir(pilar.nome === undefined || typeof pilar.nome === 'string', 'pilar.nome deve ser texto.');
+  exigir(pilar.nome !== undefined || pilar.nivel !== undefined, 'pilar sem nome nem nível.');
+  exigir(pilar.nivel === undefined || ehNumero(pilar.nivel), 'pilar.nivel deve ser numérico.');
+  exigir(pilar.nivelAplicado === undefined || ehNumero(pilar.nivelAplicado), 'pilar.nivelAplicado deve ser numérico.');
+  const pacote = pilar.pacotePorNivel;
+  exigir(
+    pacote === undefined || (ehObjeto(pacote) && Object.values(pacote).every(ehNumero)),
+    'pilar.pacotePorNivel deve ser um objeto de poder para pontos por nível (numéricos).',
+  );
+  exigirEfeitos(pilar.efeitos, 'pilar');
+  exigir(
+    pilar.textos === undefined || (Array.isArray(pilar.textos) && pilar.textos.every((t) => typeof t === 'string')),
+    'pilar.textos deve ser uma lista de textos.',
+  );
 }
 
 /** Valida a estrutura mínima da versão 1, lida apenas pela migração. */
@@ -193,7 +219,8 @@ function exigirTextosBatalha(dados: Objeto): void {
 /** Valida a estrutura completa da versão 2. */
 function validarV2(dados: Objeto): void {
   exigir(dados.revisaoDados === undefined || ehNumero(dados.revisaoDados), 'revisaoDados deve ser numérico.');
-  exigirIdentidade(dados.identidade, ['nome', 'jogador', 'raca', 'reino', 'pilarLuganico', 'armaPrincipal']);
+  exigirIdentidade(dados.identidade, ['nome', 'jogador', 'raca', 'reino', 'armaPrincipal'], ['pilarLuganico']);
+  exigirPilar(dados.pilar);
 
   const { regras, atributos, combate, dano, golpes, poderes, xp } = dados;
 
@@ -251,6 +278,8 @@ function validarV2(dados: Objeto): void {
     }
     exigir(p.mostrarNaBatalha === undefined || typeof p.mostrarNaBatalha === 'boolean', `poder ${p.id} com mostrarNaBatalha inválido.`);
     exigir(p.requerPilar === undefined || ehNumero(p.requerPilar), `poder ${p.id} com requerPilar não numérico.`);
+    exigir(p.pontosProprios === undefined || p.pontosProprios === null || ehNumero(p.pontosProprios), `poder ${p.id} com pontosProprios não numérico.`);
+    exigir(p.pontosDoPilar === undefined || ehNumero(p.pontosDoPilar), `poder ${p.id} com pontosDoPilar não numérico.`);
     if (p.escala !== undefined) exigirEscala(p.escala, p.id);
   }
 

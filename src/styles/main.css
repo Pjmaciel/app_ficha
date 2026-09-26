@@ -230,3 +230,8 @@ button.grande { min-height: 3.25rem; font-size: 1.05rem; }
 @media (prefers-reduced-motion: reduce) {
   .barra .preenchimento { transition: none; }
 }
+
+/* Pilar com escala: card da aba Batalha, prévia na aba Identidade e linha "próprios + pilar" nos poderes */
+.pilar .teste-pilar { margin: 0.2rem 0 0.5rem; }
+.previa-pilar { margin: 0.2rem 0 0.6rem; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
+.nivel-pilar { margin: 0; }

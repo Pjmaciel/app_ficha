@@ -42,7 +42,7 @@ Regra geral: a escala é por ponto (nível) do poder, salvo indicação. Quando 
 
 ## Pilar (aspecto do mundo)
 - Livro: o aspecto varia de 1 a 5, sobe com meditação de 28 a 34 dias em um salão (teste 10 × nível + 1d×100 contra dificuldade 600, −100 por nível do aspecto contrário); alguns poderes exigem aspecto mínimo (ex.: "honra 3") e só funcionam quando o aspecto do mundo estiver nesse nível.
-- Modelo: `identidade.pilarNivel: number` (atual 3, editável) e `Poder.requerPilar?: number`. Exibir o pilar como "Justiça 3" a partir de pilarLuganico + pilarNivel (substitui a formatação por nível lugânico feita no nó H). Alerta quando um poder exigir pilar acima do atual.
+- Modelo: `Poder.requerPilar?: number` e o pilar em `Ficha.pilar` (nome e nível, atual 3, editável; antes `identidade.pilarLuganico` e `identidade.pilarNivel`, ver `pilar-requisitos.md`). Exibir o pilar como "Justiça 3" (substitui a formatação por nível lugânico feita no nó H). Alerta quando um poder exigir pilar acima do atual.
 
 ## Efeitos escaláveis genéricos e textos vivos (pedido do jogador em 2026-09-26)
 Regra: ao subir um poder, TODOS os lugares que citam esse poder mudam junto (aba Batalha, absorções, "Quando for atacado", lembretes, descrição do poder, composição). Nenhum número de efeito fica em texto fixo.
