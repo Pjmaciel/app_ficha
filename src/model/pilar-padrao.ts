@@ -1,6 +1,6 @@
-// Semente do pilar lugânico (docs/pilar-requisitos.md): pilar da Justiça do livro "MAIS GLÓRIA E MAIS PODER".
-// Serve de semente para alexsander.json e para a migração de fichas salvas antes do pilar com escala existir;
-// tudo continua editável (o pacote por nível na aba Poderes, os textos em "Textos da batalha").
+// Semente do pilar lugânico, só informativo (docs/pilar-requisitos.md; regra da mesa em docs/regra-mesa-build-requisitos.md): pilar da Justiça do livro "MAIS GLÓRIA E MAIS PODER".
+// Serve de semente para alexsander.json e para a migração de fichas salvas; o pilar não concede poderes,
+// e tudo continua editável (o nome e o nível na aba Identidade, os textos em "Textos da batalha").
 import { PILAR_NIVEL_PADRAO } from './batalha-padrao';
 import type { EfeitoEscalavel, Pilar } from './types';
 
@@ -12,29 +12,6 @@ export function limitarNivelPilar(nivel: number): number {
   if (!Number.isFinite(nivel)) return PILAR_NIVEL_PADRAO;
   return Math.max(PILAR_MIN, Math.min(PILAR_MAX, Math.round(nivel)));
 }
-
-/**
- * Semente do pilar da Justiça 3 (docs/pilar-livres-requisitos.md): por poder, o valor base do pilar (pontos a cada nível
- * do pilar, do pacote "Poderes adicionais" do livro) e os pontos livres (evolução pessoal). Nível = base × pilar + livres.
- * A Velocidade Divina é de origem livre (fora do pacote) e o Portador da Jikar é item (sem nível).
- */
-export const SEMENTE_JUSTICA: Record<string, { valorBasePilar: number; pontosLivres: number }> = {
-  lugan_completo: { valorBasePilar: 2, pontosLivres: 0 },
-  protecao_divina: { valorBasePilar: 1, pontosLivres: 1 },
-  campeao_do_combate_divino: { valorBasePilar: 2, pontosLivres: 0 },
-  o_filho_de_hagashi: { valorBasePilar: 4, pontosLivres: 0 },
-  lugan_da_batalha: { valorBasePilar: 1, pontosLivres: 2 },
-  forca_das_montanhas_divinas: { valorBasePilar: 1, pontosLivres: 0 },
-  golpe_devastador: { valorBasePilar: 1, pontosLivres: 0 },
-  manipulador_de_tsu_real: { valorBasePilar: 1, pontosLivres: 0 },
-  fogo_real: { valorBasePilar: 2, pontosLivres: 0 },
-  velocidade_divina: { valorBasePilar: 0, pontosLivres: 2 },
-};
-
-/** "Poderes adicionais" do pilar da Justiça: pontos concedidos ao assumir e a cada nível que o pilar sobe (valor base × nível do pilar). */
-export const PACOTE_JUSTICA: Record<string, number> = Object.fromEntries(
-  Object.entries(SEMENTE_JUSTICA).filter(([, x]) => x.valorBasePilar > 0).map(([id, x]) => [id, x.valorBasePilar]),
-);
 
 const semAcento = (t: string): string => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
@@ -71,8 +48,8 @@ export function textosPilarJustica(): string[] {
 }
 
 /**
- * Pilar de partida: nome e nível dados. O da Justiça traz o pacote, os efeitos e os textos do livro; qualquer outro
- * começa sem pacote (o jogador o monta).
+ * Pilar de partida: nome e nível dados. O da Justiça traz os efeitos e os textos narrativos do livro; qualquer outro
+ * começa sem eles. Nenhum pilar concede poderes (regra da mesa).
  */
 export function pilarPadrao(nome: string, nivel: number = PILAR_NIVEL_PADRAO): Pilar {
   const n = limitarNivelPilar(nivel);
@@ -80,7 +57,6 @@ export function pilarPadrao(nome: string, nivel: number = PILAR_NIVEL_PADRAO): P
   return {
     nome,
     nivel: n,
-    pacotePorNivel: justica ? { ...PACOTE_JUSTICA } : {},
     efeitos: justica ? efeitosPilarJustica() : [],
     textos: justica ? textosPilarJustica() : [],
   };

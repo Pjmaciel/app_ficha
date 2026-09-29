@@ -1,6 +1,7 @@
 import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao, textoVivo } from '../model/batalha-padrao';
 import { descricaoPadrao, ehDescricaoAntiga, escalaPadrao } from '../model/escalas-padrao';
-import { ehPilarJustica, limitarNivelPilar, pilarPadrao, SEMENTE_JUSTICA } from '../model/pilar-padrao';
+import { BUILD_MESA, ROTULO_BUILD } from '../model/build-mesa';
+import { limitarNivelPilar, pilarPadrao } from '../model/pilar-padrao';
 import type {
   AcaoBatalha,
   Atributo,
@@ -307,76 +308,39 @@ export function alertasPilar(f: Ficha): AlertaPilar[] {
     .map((p) => ({ poderId: p.id, nome: p.nome, requer: p.requerPilar as number, atual }));
 }
 
-// ---------- Pilar com escala: pacote de poderes por nível, efeitos e textos ----------
+// ---------- Pilar (informativo) e origem dos poderes ----------
 
-/** Valor base do pilar do poder: pontos que o pacote concede a cada nível do pilar (zero fora do pacote). */
-export const valorBasePilar = (f: Ficha, p: Poder): number => f.pilar.pacotePorNivel[p.id] ?? 0;
+const ROTULO_ORIGEM: Record<OrigemPoder, string> = { livre: 'poderes livres', item: 'item', manual: 'manual' };
 
-/** Pontos que o pilar dá ao poder: valor base × nível do pilar. */
-export function pontosDoPilar(f: Ficha, p: Poder): number {
-  return valorBasePilar(f, p) * f.pilar.nivel;
-}
-
-/** Nível do poder: pontos do pilar + pontos livres, nunca abaixo de zero; nulo se o poder não tem nível (sem livres e fora do pacote). */
-export function nivelPeloPilar(doPilar: number, livres: number | null): number | null {
-  if (livres === null && doPilar === 0) return null;
-  return Math.max(0, doPilar + (livres ?? 0));
-}
-
-/** Origem do poder quando a ficha não a traz: item, pacote do pilar (valor base positivo) ou pontos livres. */
-function origemPadrao(p: Poder, base: number): OrigemPoder {
-  if (p.tipo === 'item') return 'item';
-  return base > 0 ? 'pilar' : 'livre';
-}
+/** Origem do poder quando a ficha não a traz: item para o tipo item; senão, pontos livres. */
+const origemPadrao = (p: Poder): OrigemPoder => (p.tipo === 'item' ? 'item' : 'livre');
 
 /**
- * Recalcula, na própria ficha, o que o pilar deriva: limita o nível do pilar a 1..5 e, em cada poder, grava
- * `valorBasePilar` (do pacote) e `nivel` = valor base × nível do pilar + pontos livres (nunca abaixo de 0). Poder sem
- * `pontosLivres` (ficha montada à mão) recebe os livres que preservam o nível declarado; sem `origem`, ela é deduzida.
- * Idempotente; chamada na migração, ao mudar o pilar e a cada edição.
+ * Normaliza a ficha na própria ficha: limita o nível do pilar a 1..5 e completa a origem dos poderes. O pilar é só
+ * informativo (regra da mesa): não mexe no nível de nenhum poder, que é o nível informado. Idempotente.
  */
 export function aplicarPilar(f: Ficha): Ficha {
   f.pilar.nivel = limitarNivelPilar(f.pilar.nivel);
-  for (const p of f.poderes) {
-    const base = valorBasePilar(f, p);
-    const doPilar = base * f.pilar.nivel;
-    p.valorBasePilar = base;
-    if (p.pontosLivres === undefined) p.pontosLivres = p.nivel === null && base === 0 ? null : (p.nivel ?? 0) - doPilar;
-    p.origem ??= origemPadrao(p, base);
-    p.nivel = nivelPeloPilar(doPilar, p.pontosLivres);
-  }
+  for (const p of f.poderes) p.origem ??= origemPadrao(p);
   return f;
 }
 
 export interface ComposicaoPoder {
   nivel: number | null;
-  valorBasePilar: number;
-  nivelPilar: number;
-  /** Valor base × nível do pilar. */
-  doPilar: number;
-  pontosLivres: number;
-  /** Ex.: "Lugan da Batalha 5 — Pilar: 1 × 3 = 3 · Poderes livres: +2 · Total: 5". */
+  origem: OrigemPoder;
+  /** Ex.: "Proteção Divina 2 — nível informado (poderes livres)". */
   texto: string;
 }
 
-/** De onde vem o nível do poder: pilar (valor base × nível do pilar), pontos livres e total, com o texto pronto para a interface. */
-export function composicaoDoPoder(f: Ficha, p: Poder): ComposicaoPoder {
-  const base = valorBasePilar(f, p);
-  const nivelPilar = f.pilar.nivel;
-  const doPilar = base * nivelPilar;
-  const livres = p.pontosLivres ?? 0;
+/** De onde vem o nível do poder: o nível informado, com a origem, no texto pronto para a interface. */
+export function composicaoDoPoder(_f: Ficha, p: Poder): ComposicaoPoder {
   const nome = p.nome.trim() || 'Sem nome';
-  const nivel = p.nivel;
-  const partes = [
-    base > 0 ? `Pilar: ${base} × ${nivelPilar} = ${doPilar}` : null,
-    `Poderes livres: ${comSinal(livres)}`,
-    `Total: ${nivel ?? 0}`,
-  ].filter((x): x is string => x !== null);
-  const texto = nivel === null ? `${nome} — sem nível` : `${nome} ${nivel} — ${partes.join(' · ')}`;
-  return { nivel, valorBasePilar: base, nivelPilar, doPilar, pontosLivres: livres, texto };
+  const origem = p.origem ?? origemPadrao(p);
+  const texto = p.nivel === null ? `${nome} — sem nível (${ROTULO_ORIGEM[origem]})` : `${nome} ${p.nivel} — nível informado (${ROTULO_ORIGEM[origem]})`;
+  return { nivel: p.nivel, origem, texto };
 }
 
-/** Ficha (nova) com o pilar no nível dado, limitado a 1..5: o pacote entra ou sai e todas as escalas recalculam. */
+/** Ficha (nova) com o pilar no nível dado, limitado a 1..5; nenhum poder muda (o pilar é informativo). */
 export function definirNivelPilar(f: Ficha, nivel: number): Ficha {
   const nova = structuredClone(f);
   nova.pilar.nivel = limitarNivelPilar(nivel);
@@ -388,15 +352,6 @@ export const subirPilar = (f: Ficha): Ficha => definirNivelPilar(f, f.pilar.nive
 
 /** Desce o pilar um nível (no mínimo 1). */
 export const descerPilar = (f: Ficha): Ficha => definirNivelPilar(f, f.pilar.nivel - 1);
-
-/** Poderes que mudam de nível se o pilar for para `nivel`: o total de hoje e o de depois. */
-export function previaPilar(f: Ficha, nivel: number): { poderId: string; nome: string; de: number | null; para: number | null }[] {
-  const depois = definirNivelPilar(f, nivel);
-  return f.poderes.flatMap((p, i) => {
-    const para = depois.poderes[i].nivel;
-    return p.nivel === para ? [] : [{ poderId: p.id, nome: p.nome, de: p.nivel, para }];
-  });
-}
 
 /** Efeitos do pilar no nível atual (valor = fixo + porPonto × ⌊nível ÷ aCada⌋); se um id se repete, vale o primeiro. */
 export function efeitosDoPilar(f: Ficha): EfeitoResolvido[] {
@@ -736,6 +691,21 @@ export interface ProtecaoDivinaBatalha {
   reducaoTsuReal: string | null;
   /** Próximo patamar de Tsu real: nível e dado (ex.: nível 6, "1d+1"); nulo se não há. */
   proximaReducaoTsuReal: { nivel: number; dado: string | null } | null;
+  /** Frase pronta: "Não reduz Tsu real no nível 2 (a partir do nível 3, com 1d)" ou "Reduz Tsu real com 1d (próximo: nível 6, 1d+1)". */
+  textoTsuReal: string;
+  /** Usos por dia da sessão (rodadas de imunidade disponíveis); nulo se o poder não tem usos. */
+  uso: UsoPoder | null;
+  /** "Proteção Divina: 2 / 2 rodadas disponíveis"; nulo sem usos. */
+  rotuloUsos: string | null;
+}
+
+/** Card permanente da Jikar (item principal): bônus em dados e os lembretes da descrição do Portador da Jikar, já resolvidos. */
+export interface JikarBatalha {
+  nome: string;
+  /** Dados extras (×100) em ataque e defesa e no dano. */
+  dadosAtaqueDefesa: number;
+  dadosDano: number;
+  lembretes: string[];
 }
 
 /** Card "Pilar da Justiça nível N" da aba Batalha, com os textos do pilar já resolvidos. */
@@ -751,6 +721,14 @@ export interface PilarBatalha {
 export interface ResumoBatalha {
   /** PV atual e máximo; `base` = PV por ponto × Fortitude, `protecaoDivina` = parcela da Proteção Divina, `outros` = demais extras. */
   pv: { atual: number; total: number; base: number; protecaoDivina: number; outros: number };
+  /** Topo: pilar informativo ("Justiça 3"), item principal (a arma) e o rótulo da build ("Defesa com Jikar"). */
+  topo: { pilar: string; itemPrincipal: string; build: string; protecaoDivina: string | null };
+  /** Composição do ataque normal: "Rolagem base 2d×100 + Jikar 3d×100 = 5d×100, bônus dos poderes +260". */
+  ataqueDetalhe: string;
+  /** Composição do dano normal: "Dano base 2d + Jikar 1d = 3d×262, bônus dos poderes +80". */
+  danoDetalhe: string;
+  /** Card da Jikar; nulo se o Portador da Jikar não existe ou foi removido. */
+  jikar: JikarBatalha | null;
   fadiga: number;
   /** Dados por nível no formato "2d×100". */
   rolagemBase: string;
@@ -795,11 +773,12 @@ function protecaoDoPoder(f: Ficha, p: Poder, uso: UsoPoder | null): ProtecaoBata
 const DADO_TSU = /\d+d(?:\+\d+)?/;
 
 /** Card da Proteção Divina: efeitos no nível atual e a redução de Tsu real dos patamares (o dado sai do texto do patamar). */
-function protecaoDivinaDaBatalha(f: Ficha): ProtecaoDivinaBatalha | null {
+function protecaoDivinaDaBatalha(f: Ficha, sessao: Sessao): ProtecaoDivinaBatalha | null {
   const p = f.poderes.find((x) => x.id === 'protecao_divina');
   if (!p || p.tipo === 'removido') return null;
   const valor = (id: string): number => efeitosDoPoder(p).find((e) => e.id === id)?.valor ?? 0;
   const { patamares } = patamaresDoPoder(f, p);
+  const uso = poderUsavel(p) && usosPorDiaDoPoder(p) !== undefined ? usoDoPoder(p, sessao) : null;
   const tsu = patamares.filter((x) => /Tsu real/i.test(x.texto));
   const atingidos = tsu.filter((x) => x.atingido);
   const proximo = tsu.find((x) => !x.atingido);
@@ -817,6 +796,11 @@ function protecaoDivinaDaBatalha(f: Ficha): ProtecaoDivinaBatalha | null {
     reduzTsuReal: atingidos.length > 0,
     reducaoTsuReal: dado(atingidos[atingidos.length - 1]),
     proximaReducaoTsuReal: proximo ? { nivel: proximo.nivel, dado: dado(proximo) } : null,
+    textoTsuReal: atingidos.length > 0
+      ? `Reduz Tsu real com ${dado(atingidos[atingidos.length - 1]) ?? 'dado'}${proximo ? ` (próximo: nível ${proximo.nivel}, ${dado(proximo) ?? 'melhora'})` : ''}`
+      : `Não reduz Tsu real no nível ${p.nivel ?? 0}${proximo ? ` (a partir do nível ${proximo.nivel}, com ${dado(proximo) ?? 'dado'})` : ''}`,
+    uso,
+    rotuloUsos: uso && uso.limite !== null ? `Proteção Divina: ${uso.restantes} / ${uso.limite} rodadas disponíveis` : null,
   };
 }
 
@@ -838,6 +822,44 @@ function pilarDaBatalha(f: Ficha): PilarBatalha | null {
   };
 }
 
+/** Rótulo da build: "Defesa com Jikar" quando o Portador da Jikar e a Proteção Divina estão ativos; senão, "Com <arma>". */
+function rotuloDaBuild(f: Ficha): string {
+  const ativo = (id: string): boolean => f.poderes.some((p) => p.id === id && p.tipo !== 'removido');
+  if (ativo('portador_da_jikar') && ativo('protecao_divina')) return ROTULO_BUILD;
+  const arma = f.identidade.armaPrincipal.trim();
+  return arma === '' ? 'Sem arma principal' : `Com ${arma}`;
+}
+
+/** "Rolagem base 2d×100 + Jikar 3d×100 = 5d×100, bônus dos poderes +260": os dados extras nomeados e a parte fixa vinda dos poderes. */
+function detalheDoAtaque(f: Ficha): string {
+  const entrada = f.combate.ataqueArmaBranca;
+  const base = dadosPorNivel(f.identidade.nivel);
+  const extras = entrada.dadosExtras.map((x) => ` + ${x.nome} ${x.valor}d×100`).join('');
+  const c = combate(f, 'ataqueArmaBranca');
+  const bonus = somaFontes(fontesDerivadasCombate(f, 'ataqueArmaBranca')) + somaFontes(entrada.fontes) + c.fieisBonus;
+  return `Rolagem base ${base}d×100${extras} = ${c.dados}d×100, bônus dos poderes ${comSinal(bonus)}`;
+}
+
+/** "Dano base 2d + Jikar 1d = 3d×262, bônus dos poderes +80". */
+function detalheDoDano(f: Ficha): string {
+  const base = dadosPorNivel(f.identidade.nivel);
+  const extras = f.dano.dadosExtras.map((x) => ` + ${x.nome} ${x.valor}d`).join('');
+  const r = dano(f);
+  return `Dano base ${base}d${extras} = ${r.dados}d×${r.multiplicador}, bônus dos poderes ${comSinal(r.fixo + r.fieisBonus)}`;
+}
+
+/** Card da Jikar: dados extras e os lembretes da descrição do Portador da Jikar (separados por ponto e vírgula). */
+function jikarDaBatalha(f: Ficha): JikarBatalha | null {
+  const p = f.poderes.find((x) => x.id === 'portador_da_jikar');
+  if (!p || p.tipo === 'removido') return null;
+  return {
+    nome: p.nome,
+    dadosAtaqueDefesa: somaFontes(f.combate.ataqueArmaBranca.dadosExtras),
+    dadosDano: somaFontes(f.dano.dadosExtras),
+    lembretes: resolverTexto(f, p.descricao).split(/;\s*/).map((t) => t.trim().replace(/\.$/, '')).filter((t) => t !== ''),
+  };
+}
+
 /** Tudo o que a aba Batalha exibe, já calculado (textos vivos resolvidos); não altera a ficha nem a sessão. */
 export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
   const poderDe = (id: string) => f.poderes.find((p) => p.id === id);
@@ -845,7 +867,9 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
   const usoOuNulo = (p: Poder | undefined): UsoPoder | null =>
     p && poderUsavel(p) && usosPorDiaDoPoder(p) !== undefined ? usoDoPoder(p, sessao) : null;
 
-  const golpes = f.golpes.map((g): GolpeBatalha => {
+  // Golpe cujo poder foi removido (ex.: Golpe Devastador, por enquanto) sai da Batalha.
+  const golpesAtivos = f.golpes.filter((g) => poderDe(g.id)?.tipo !== 'removido');
+  const golpes = golpesAtivos.map((g): GolpeBatalha => {
     const r = golpe(f, g);
     const poder = poderDe(g.id);
     const pontos = poder && poder.tipo !== 'removido' ? poder.nivel : null;
@@ -865,7 +889,17 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
     };
   });
 
+  const protecaoDivina = protecaoDivinaDaBatalha(f, sessao);
   return {
+    topo: {
+      pilar: pilarTexto(f),
+      itemPrincipal: f.identidade.armaPrincipal.trim(),
+      build: rotuloDaBuild(f),
+      protecaoDivina: protecaoDivina?.rotuloUsos ?? null,
+    },
+    ataqueDetalhe: detalheDoAtaque(f),
+    danoDetalhe: detalheDoDano(f),
+    jikar: jikarDaBatalha(f),
     pv: { atual: sessao.pvAtual, total: pvTotal(f), base: pvBase(f), protecaoDivina: pvDaProtecaoDivina(f), outros: pvTotal(f) - pvBase(f) - pvDaProtecaoDivina(f) },
     fadiga: sessao.fadiga,
     rolagemBase: `${dadosPorNivel(f.identidade.nivel)}d×100`,
@@ -877,7 +911,7 @@ export function resumoBatalha(f: Ficha, sessao: Sessao): ResumoBatalha {
     defesas: DEFESAS_BATALHA.map(({ chave, nome }) => ({ chave, nome, rolagem: rolagemPronta(combate(f, chave)) })),
     acoes: f.acoes.map((a) => ({ ...a, nome: resolverTexto(f, a.nome), rolagem: resolverTexto(f, a.rolagem), notas: resolverTexto(f, a.notas) })),
     protecoes: f.poderes.filter(mostraNaBatalha).map((p) => protecaoDoPoder(f, p, usoOuNulo(p))),
-    protecaoDivina: protecaoDivinaDaBatalha(f),
+    protecaoDivina,
     reacoes: f.reacoes.map((r) => ({ situacao: resolverTexto(f, r.situacao), resposta: resolverTexto(f, r.resposta) })),
     lembretes: f.lembretes.map((t) => resolverTexto(f, t)),
     pilar: pilarDaBatalha(f),
@@ -971,15 +1005,20 @@ function migrarV1(v1: FichaV1): Ficha {
     fieis: 0,
     xp: v1.xp,
   };
-  semearPontos(ficha, PILAR_NIVEL_PADRAO);
   return aplicarPilar(ficha);
 }
 
-/** Pilar como salvo antes do nó M: podia trazer `nivelAplicado` (base da conta do pacote incremental). */
-type PilarSalvo = Partial<Pilar> & { nivelAplicado?: unknown };
+/** Pilar como salvo antes do nó N: podia trazer o pacote de poderes (`pacotePorNivel`) e o `nivelAplicado`. */
+type PilarSalvo = Partial<Pilar> & { nivelAplicado?: unknown; pacotePorNivel?: unknown };
 
-/** Poder como salvo antes do nó M: pontos próprios e do pilar (agora `pontosLivres` e derivado) e o tipo `defensivo` (agora `defesa`). */
-type PoderSalvo = Omit<Poder, 'tipo'> & { tipo: TipoPoder | 'defensivo'; pontosProprios?: number | null; pontosDoPilar?: number };
+/** Poder como salvo antes do nó N: pontos próprios/livres, valor base e do pilar (extintos) e o tipo `defensivo` (agora `defesa`). */
+type PoderSalvo = Omit<Poder, 'tipo'> & {
+  tipo: TipoPoder | 'defensivo';
+  pontosProprios?: number | null;
+  pontosLivres?: number | null;
+  pontosDoPilar?: number;
+  valorBasePilar?: number;
+};
 
 /**
  * Ficha versão 2 salva antes da aba Batalha ou do pilar com escala: os campos dela podem faltar, e o pilar pode
@@ -1019,33 +1058,33 @@ function completarBatalha(f: FichaV2Anterior): FichaSemPilar {
 }
 
 /**
- * Passa os poderes salvos para a regra do nó M (nível = valor base do pilar × nível do pilar + pontos livres): no pilar da
- * Justiça, os pontos livres vêm da semente do requisito (não do nível antigo); nos demais casos, preservam o nível
- * que o poder tinha (`pontosProprios − valor base × nível aplicado`, com o nível aplicado da regra incremental antiga).
- * Também migra o tipo `defensivo` para `defesa` e descarta `pontosProprios` e `pontosDoPilar`. Poder que já traz
- * `pontosLivres` só perde os campos antigos.
+ * A ficha ainda é anterior à regra da mesa (nó N): traz pacote do pilar, pontos próprios/livres, valor base, tipo
+ * `defensivo` ou poderes sem origem. Depois da conversão nada disso resta, então a conversão não repete e preserva as edições.
  */
-function semearPontos(f: Ficha, nivelAplicado: number): void {
-  const justica = ehPilarJustica(f.pilar.nome);
+function ehAnteriorARegraDaMesa(f: FichaV2Anterior): boolean {
+  const pilar = f.pilar;
+  if (pilar === undefined || pilar.pacotePorNivel !== undefined || pilar.nivelAplicado !== undefined) return true;
+  return f.poderes.some((p) => p.origem === undefined || p.tipo === 'defensivo' || p.pontosProprios !== undefined
+    || p.pontosLivres !== undefined || p.pontosDoPilar !== undefined || p.valorBasePilar !== undefined);
+}
+
+/** Descarta os campos extintos do poder; nos poderes fora da build, o nível informado é o que o jogador tinha como pontos livres. */
+function limparPoderesAntigos(f: Ficha): void {
   for (const p of f.poderes as PoderSalvo[]) {
-    if (p.pontosLivres === undefined) {
-      const semente = justica ? SEMENTE_JUSTICA[p.id] : undefined;
-      const proprios = p.pontosProprios === undefined ? p.nivel : p.pontosProprios;
-      if (semente) p.pontosLivres = semente.pontosLivres;
-      else if (proprios !== undefined) {
-        p.pontosLivres = proprios === null ? null : proprios - (f.pilar.pacotePorNivel[p.id] ?? 0) * nivelAplicado;
-      }
-    }
+    if (p.pontosLivres !== undefined) p.nivel = p.pontosLivres;
+    else if (p.pontosProprios !== undefined) p.nivel = p.pontosProprios;
+    delete p.pontosLivres;
     delete p.pontosProprios;
     delete p.pontosDoPilar;
+    delete p.valorBasePilar;
     if (p.tipo === 'defensivo') p.tipo = 'defesa';
   }
 }
 
 /**
  * Monta `Ficha.pilar` na versão 2 que ainda o guarda em `identidade` (`pilarLuganico`, `pilarNivel`) ou não o tem:
- * a semente do livro (Justiça traz pacote, efeitos e textos) com o nível salvo (3 quando ausente). Um pilar já salvo é
- * respeitado; só os campos ausentes são completados, e o antigo `nivelAplicado` sai (ver `semearPontos`).
+ * a semente do livro (Justiça traz efeitos e textos narrativos) com o nível salvo (3 quando ausente). Um pilar já salvo é
+ * respeitado; só os campos ausentes são completados, e o antigo pacote e `nivelAplicado` saem (o pilar é informativo).
  * Os campos antigos saem de `identidade`.
  */
 function completarPilar(f: FichaSemPilar): Ficha {
@@ -1057,13 +1096,11 @@ function completarPilar(f: FichaSemPilar): Ficha {
   const pilar: Pilar = {
     nome,
     nivel,
-    pacotePorNivel: salvo?.pacotePorNivel ?? semente.pacotePorNivel,
     efeitos: salvo?.efeitos ?? semente.efeitos,
     textos: salvo?.textos ?? semente.textos,
   };
-  const aplicado = typeof salvo?.nivelAplicado === 'number' ? Math.max(0, Math.round(salvo.nivelAplicado)) : nivel;
   const ficha = { ...f, revisaoDados: f.revisaoDados ?? 0, identidade, pilar } as unknown as Ficha;
-  semearPontos(ficha, aplicado);
+  limparPoderesAntigos(ficha);
   return ficha;
 }
 
@@ -1074,21 +1111,6 @@ function retirarFontes(fontes: Fonte[], nome: string): number | null {
   const restantes = fontes.filter((x) => !achadas.includes(x));
   fontes.splice(0, fontes.length, ...restantes);
   return somaFontes(achadas);
-}
-
-/** Fonte manual criada pela migração antiga para calibrar os níveis da planilha ("Ajuste do mestre (Poder)"). */
-const ehAjusteDoMestre = (x: Fonte): boolean => x.poderId === undefined && /^Ajuste do mestre \(/.test(x.nome.trim());
-
-/**
- * Remove as fontes manuais "Ajuste do mestre" que calibravam os níveis antigos da planilha: com os níveis certos, vale o
- * coeficiente do livro por ponto. A fonte "Outros" e as demais fontes manuais ficam.
- */
-function retirarAjustesDoMestre(f: Ficha): void {
-  const limpar = (fontes: Fonte[]): void => { fontes.splice(0, fontes.length, ...fontes.filter((x) => !ehAjusteDoMestre(x))); };
-  for (const chave of Object.keys(f.combate) as ChaveCombate[]) limpar(f.combate[chave].fontes);
-  limpar(f.dano.fixos);
-  limpar(f.pvExtras);
-  for (const a of Object.values(f.atributos)) limpar(a.extras);
 }
 
 /**
@@ -1154,28 +1176,57 @@ function semearEfeitos(p: Poder): void {
 }
 
 /**
+ * Converte a ficha anterior à regra da mesa para a build atual (docs/regra-mesa-build-requisitos.md): níveis, tipos e
+ * origens da build (poderes fora dela ficam `removido`, no histórico), escalas do livro, nenhuma fonte manual sem origem
+ * em poder ou item (some o "Outros" e os ajustes) e os textos da batalha da build.
+ */
+function converterParaBuild(f: Ficha): Ficha {
+  for (const p of f.poderes) {
+    const b = BUILD_MESA[p.id];
+    if (b) {
+      p.nivel = b.nivel;
+      p.tipo = b.tipo;
+      p.origem = b.origem;
+      const escala = escalaPadrao(p.id);
+      if (escala) p.escala = escala;
+      if (p.id === 'protecao_divina') delete p.usosPorDia;
+    } else {
+      p.origem ??= 'manual';
+    }
+  }
+  for (const chave of Object.keys(f.combate) as ChaveCombate[]) f.combate[chave].fontes = [];
+  f.dano.fixos = [];
+  f.pvExtras = [];
+  for (const a of Object.values(f.atributos)) a.extras = [];
+  f.acoes = acoesPadrao();
+  f.lembretes = lembretesPadrao();
+  f.reacoes = reacoesPadrao();
+  for (const p of f.poderes) vivificarDescricao(f, p);
+  return f;
+}
+
+/**
  * Troca a descrição antiga da planilha (números fixos) pela viva do poder conhecido, com marcadores que acompanham o nível.
  * Só troca se o texto está exatamente igual ao antigo (edição do jogador fica) e se todos os marcadores resolvem; junta à
  * escala os efeitos da semente que faltam (por id), para os marcadores existirem.
  */
 function vivificarDescricao(f: Ficha, p: Poder): void {
   const nova = descricaoPadrao(p.id);
-  if (nova === null || !ehDescricaoAntiga(p.id, p.descricao) || p.escala === undefined) return;
-  const antes = { descricao: p.descricao, efeitos: p.escala.efeitos ? structuredClone(p.escala.efeitos) : undefined };
+  if (nova === null || !ehDescricaoAntiga(p.id, p.descricao)) return;
+  const antes = { descricao: p.descricao, efeitos: p.escala?.efeitos ? structuredClone(p.escala.efeitos) : undefined };
   p.descricao = nova;
-  const atuais = p.escala.efeitos;
+  const atuais = p.escala?.efeitos;
   if (atuais !== undefined) {
     for (const e of escalaPadrao(p.id)?.efeitos ?? []) if (!atuais.some((x) => x.id === e.id)) atuais.push(e);
   }
   if (marcadoresInvalidos(f, nova).length > 0) {
     p.descricao = antes.descricao;
-    if (antes.efeitos) p.escala.efeitos = antes.efeitos;
+    if (antes.efeitos && p.escala) p.escala.efeitos = antes.efeitos;
   }
 }
 
 /** Poderes já com `escala` (mesmo vazia) são respeitados; os conhecidos sem ela recebem a semente; os efeitos ausentes são semeados. */
 function aplicarEscalas(f: Ficha): Ficha {
-  retirarAjustesDoMestre(f);
   for (const p of f.poderes) {
     if (p.escala === undefined) converterPoder(f, p);
     semearEfeitos(p);
@@ -1196,7 +1247,12 @@ export function migrarFicha(json: unknown): Ficha {
     throw new Error('Ficha inválida: o conteúdo deve ser um objeto.');
   }
   const versao = (json as { versao?: unknown }).versao;
-  if (versao === 2) return aplicarEscalas(aplicarPilar(completarPilar(completarBatalha(structuredClone(json as FichaV2Anterior)))));
+  if (versao === 2) {
+    const salva = structuredClone(json as FichaV2Anterior);
+    const anterior = ehAnteriorARegraDaMesa(salva);
+    const ficha = aplicarEscalas(aplicarPilar(completarPilar(completarBatalha(salva))));
+    return anterior ? converterParaBuild(ficha) : ficha;
+  }
   if (versao === 1) return migrarV1(structuredClone(json as FichaV1));
   throw new Error(`Ficha inválida: versão não suportada (${String(versao)}); esperadas 1 ou 2.`);
 }
@@ -1216,4 +1272,49 @@ export function decidirCarregamento(salva: unknown, embutida: Ficha): DecisaoCar
   if (versao === 1) return { acao: 'embutida', motivo: 'planilha-antiga' };
   const revisao = typeof revisaoDados === 'number' && Number.isFinite(revisaoDados) ? revisaoDados : 0;
   return { acao: 'salva', avisarNovaRevisao: versao === 2 && revisao < embutida.revisaoDados };
+}
+
+// ---------- Validação da build (regra da mesa) ----------
+
+export interface AlertaFicha { codigo: 'pilar-concede-poderes' | 'golpe-competencia' | 'protecao-sem-pv' | 'jikar-incompleta' | 'batalha-sem-bonus'; mensagem: string }
+
+const semAcentos = (t: string): string => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Alertas da ficha pela regra da mesa (docs/regra-mesa-build-requisitos.md), sem alterar nada: o pilar concedendo poderes
+ * (pacote ou valor base); Golpe Especial: Competência ativo; Proteção Divina ativa sem PV extra; Jikar sem +3d×100 em
+ * ataque e defesa ou sem +1d no dano; e Batalha sem os bônus do Campeão do Combate Divino e do Lugan da Batalha.
+ */
+export function validarFicha(f: Ficha): AlertaFicha[] {
+  const alertas: AlertaFicha[] = [];
+  const pilar = f.pilar as Pilar & { pacotePorNivel?: unknown };
+  const temPacote = pilar.pacotePorNivel !== undefined
+    || f.poderes.some((p) => (p as { valorBasePilar?: unknown }).valorBasePilar !== undefined);
+  if (temPacote) {
+    alertas.push({ codigo: 'pilar-concede-poderes', mensagem: 'O pilar não concede poderes nesta mesa: remova o pacote e o valor base do pilar; o nível de cada poder é o informado.' });
+  }
+  const competencia = f.golpes.find((g) => g.ativo && semAcentos(`${g.id} ${g.nome}`).includes('competencia'))
+    ?? f.poderes.find((p) => p.tipo !== 'removido' && semAcentos(`${p.id} ${p.nome}`).includes('competencia'));
+  if (competencia) {
+    alertas.push({ codigo: 'golpe-competencia', mensagem: 'Golpe Especial: Competência não existe nesta mesa e está ativo; desative-o.' });
+  }
+  const protecao = f.poderes.find((p) => p.id === 'protecao_divina');
+  if (protecao && protecao.tipo !== 'removido' && (protecao.nivel ?? 0) > 0 && pvDaProtecaoDivina(f) <= 0) {
+    alertas.push({ codigo: 'protecao-sem-pv', mensagem: 'A Proteção Divina está ativa, mas não soma PV extra: confira o PV por nível na escala do poder.' });
+  }
+  const dadosAtaqueDefesa = (['ataqueArmaBranca', 'aparar', 'bloquear', 'esquivar'] as const).map((c) => somaFontes(f.combate[c].dadosExtras));
+  const dadosDano = somaFontes(f.dano.dadosExtras);
+  if (dadosAtaqueDefesa.some((d) => d < 3) || dadosDano < 1) {
+    alertas.push({ codigo: 'jikar-incompleta', mensagem: 'A Jikar deve dar +3d×100 em ataque com arma branca, aparar, bloquear e esquivar e +1d no dano.' });
+  }
+  const faltam = ['campeao_do_combate_divino', 'lugan_da_batalha'].filter((id) => {
+    const p = f.poderes.find((x) => x.id === id);
+    if (!p || p.tipo === 'removido' || (p.nivel ?? 0) <= 0) return true;
+    return !fontesDerivadasCombate(f, 'ataqueArmaBranca').some((x) => x.poderId === id && x.valor !== 0);
+  });
+  if (faltam.length > 0) {
+    const nomes = faltam.map((id) => (id === 'lugan_da_batalha' ? 'Lugan da Batalha' : 'Campeão do Combate Divino')).join(' e ');
+    alertas.push({ codigo: 'batalha-sem-bonus', mensagem: `A aba Batalha não está usando os bônus de ${nomes}: o poder está ausente, removido, sem nível ou sem escala de ataque.` });
+  }
+  return alertas;
 }

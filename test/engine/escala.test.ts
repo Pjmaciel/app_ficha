@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import antiga from '../fixtures/alexsander-v2-sem-escala.json';
 import dados from '../../src/data/alexsander.json';
+import { fichaCompleta } from '../fixtures/ficha-completa';
 import {
   combate,
   dadosDoGolpe,
@@ -24,8 +25,9 @@ import {
 } from '../../src/engine';
 import type { ChaveCombate, Ficha, Poder } from '../../src/model/types';
 
-const ficha = dados as Ficha;
-const clonar = (): Ficha => structuredClone(ficha);
+const ficha = fichaCompleta();
+const clonar = (): Ficha => fichaCompleta();
+const fichaBuild = dados as unknown as Ficha;
 const poder = (f: Ficha, id: string): Poder => {
   const p = f.poderes.find((x) => x.id === id);
   if (!p) throw new Error(`Poder ausente: ${id}`);
@@ -254,17 +256,19 @@ describe('fiéis sugeridos', () => {
 describe('migração para a escala por nível', () => {
   const migrada = () => migrarFicha(structuredClone(antiga));
 
-  it('a ficha salva antes da escala vira a ficha semeada, com os níveis da semente do pilar e sem ajuste do mestre', () => {
+  it('a ficha salva antes da escala vira a build da mesa (Campeão 3, Lugan da Batalha 1, Proteção Divina 2, Jikar), sem "Outros"', () => {
     const f = migrada();
-    expect(f).toStrictEqual({ ...clonar(), revisaoDados: 0 });
-    for (const [chave, total] of Object.entries(TOTAIS)) expect(combate(f, chave as ChaveCombate).total).toBe(total);
-    expect(totalAtributoFicha(f, 'forca')).toBe(442);
-    expect(pvTotal(f)).toBe(4904);
-    expect(dano(f).texto).toBe('3d×442 +280');
-    expect(golpe(f, f.golpes[0]).ataqueDados).toBe(8);
-    expect(golpe(f, f.golpes[0]).dano.texto).toBe('5d×442 +280');
-    expect(usosPorDiaDoPoder(poder(f, 'golpe_devastador'))).toBe(3);
-    expect(usosPorDiaDoPoder(poder(f, 'protecao_divina'))).toBe(4);
+    expect(f).toStrictEqual({ ...structuredClone(fichaBuild), revisaoDados: 0 });
+    const totais = CHAVES.map((c) => combate(f, c).total);
+    expect(totais).toEqual([868, 551, 458, 458, 260, 661, 884]);
+    expect(totalAtributoFicha(f, 'forca')).toBe(262);
+    expect(pvTotal(f)).toBe(3904);
+    expect(dano(f).texto).toBe('3d×262 +80');
+    expect(usosPorDiaDoPoder(poder(f, 'protecao_divina'))).toBe(2);
+    expect(f.poderes.filter((p) => p.tipo === 'removido').map((p) => p.id).sort()).toEqual([
+      'fogo_real', 'forca_das_montanhas_divinas', 'golpe_devastador', 'lugan_completo', 'manipulador_de_tsu_real',
+      'o_filho_de_hagashi', 'velocidade_divina',
+    ]);
   });
 
   it('é idempotente', () => {
@@ -279,52 +283,45 @@ describe('migração para a escala por nível', () => {
     expect(JSON.stringify(entrada)).toBe(antes);
   });
 
-  it('remove os usos manuais que passaram a ser derivados, mas guarda o do Filho de Hagashi', () => {
+  it('remove o uso manual da Proteção Divina (agora derivado) e guarda o do Filho de Hagashi, removido', () => {
     const f = migrada();
     expect(poder(f, 'protecao_divina')).not.toHaveProperty('usosPorDia');
-    expect(poder(f, 'golpe_devastador')).not.toHaveProperty('usosPorDia');
     expect(poder(f, 'o_filho_de_hagashi').usosPorDia).toBe(1);
   });
 
-  it('só converte o que corresponde a uma fonte da ficha: sem fonte com o nome do poder, não injeta escala', () => {
+  it('nenhuma fonte manual sem origem em poder ou item resta: some o "Outros", os ajustes e os extras', () => {
     const bruta = structuredClone(antiga) as unknown as Ficha;
-    for (const c of CHAVES) bruta.combate[c].fontes = bruta.combate[c].fontes.filter((x) => x.nome !== 'Lugan da Batalha');
-    bruta.dano.fixos = bruta.dano.fixos.filter((x) => x.nome !== 'Lugan da Batalha');
+    bruta.combate.esquivar.fontes.push({ nome: 'Ajuste do mestre (Lugan Completo)', valor: 30 }, { nome: 'Outros', valor: 120 });
+    bruta.pvExtras.push({ nome: 'Ajuste do mestre (Proteção Divina)', valor: 5 });
+    bruta.atributos.forca.extras.push({ nome: 'Poção', valor: 5 });
     const f = migrarFicha(bruta);
-    // Sem valor salvo a converter, a parcela numérica não entra (ficaria em dobro); só os efeitos informativos.
-    expect(poder(f, 'lugan_da_batalha').escala?.ataquePorNivel).toBeUndefined();
-    expect(poder(f, 'lugan_da_batalha').escala?.danoPorNivel).toBeUndefined();
-    expect(combate(f, 'ataqueArmaBranca').total).toBe(1578 - 250);
-    expect(dano(f).fixo).toBe(280 - 100);
+    for (const c of CHAVES) expect(f.combate[c].fontes).toEqual([]);
+    expect(f.dano.fixos).toEqual([]);
+    expect(f.pvExtras).toEqual([]);
+    expect(f.atributos.forca.extras).toEqual([]);
   });
 
-  it('o valor salvo com o nível antigo é descartado: vale o coeficiente do livro, sem ajuste do mestre', () => {
-    const bruta = structuredClone(antiga) as unknown as Ficha;
-    bruta.combate.esquivar.fontes.find((x) => x.nome === 'Lugan da Batalha')!.valor = 175;
-    const f = migrarFicha(bruta);
-    expect(combate(f, 'esquivar').total).toBe(760);
-    expect(f.combate.esquivar.fontes.map((x) => x.nome)).toEqual(['Outros']);
+  it('a ficha já convertida preserva os ajustes manuais e os níveis que o jogador liberar', () => {
+    const f = structuredClone(fichaBuild);
+    f.combate.esquivar.fontes.push({ nome: 'Ajuste liberado pelo mestre', valor: 15 });
+    poder(f, 'campeao_do_combate_divino').nivel = 4;
+    poder(f, 'fogo_real').tipo = 'ativo';
+    const m = migrarFicha(f);
+    expect(m.combate.esquivar.fontes).toEqual([{ nome: 'Ajuste liberado pelo mestre', valor: 15 }]);
+    expect(poder(m, 'campeao_do_combate_divino').nivel).toBe(4);
+    expect(poder(m, 'fogo_real').tipo).toBe('ativo');
+    expect(combate(m, 'esquivar').total).toBe(260 + 15);
   });
 
-  it('o nível salvo é ignorado: os poderes da Justiça recebem os pontos livres da semente', () => {
+  it('o nível salvo é ignorado na conversão: os poderes da build voltam ao nível da mesa', () => {
     const bruta = structuredClone(antiga) as unknown as Ficha;
     poder(bruta, 'lugan_da_batalha').nivel = 9;
     const f = migrarFicha(bruta);
-    expect(poder(f, 'lugan_da_batalha')).toMatchObject({ nivel: 5, pontosLivres: 2, valorBasePilar: 1 });
-    expect(combate(f, 'ataqueArmaBranca').total).toBe(1578);
-    poder(f, 'lugan_da_batalha').nivel = 6;
-    expect(combate(f, 'ataqueArmaBranca').total).toBe(1628);
-  });
-
-  it('remove os "Ajuste do mestre" de uma ficha salva na revisão anterior e mantém "Outros"', () => {
-    const salva = clonar();
-    salva.combate.ataqueArmaBranca.fontes.push({ nome: 'Ajuste do mestre (Lugan Completo)', valor: 30 });
-    salva.dano.fixos.push({ nome: 'Ajuste do mestre (Campeão do Combate Divino)', valor: -20 });
-    salva.pvExtras.push({ nome: 'Ajuste do mestre (Proteção Divina)', valor: 5 });
-    const f = migrarFicha(salva);
-    expect(f.combate.ataqueArmaBranca.fontes).toEqual([{ nome: 'Outros', valor: 120 }]);
-    expect(f.dano.fixos).toEqual([]);
-    expect(f.pvExtras).toEqual([]);
+    expect(poder(f, 'lugan_da_batalha')).toMatchObject({ nivel: 1, tipo: 'passivo', origem: 'livre' });
+    expect(poder(f, 'protecao_divina')).toMatchObject({ nivel: 2, tipo: 'defesa', origem: 'livre' });
+    expect(poder(f, 'portador_da_jikar')).toMatchObject({ nivel: null, tipo: 'item', origem: 'item' });
+    poder(f, 'lugan_da_batalha').nivel = 2;
+    expect(combate(f, 'ataqueArmaBranca').total).toBe(868 + 50);
   });
 
   it('o carregamento de fichas da versão 1 não injeta escala (o bônus passivo é um total opaco)', () => {

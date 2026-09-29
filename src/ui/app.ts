@@ -3,7 +3,7 @@
 // `ligar`); os campos nunca são recriados durante a digitação, então o foco não se perde.
 import {
   alertaBonusNivel, alertasPilar, aplicarPilar, bonusNivelEsperado, combate, dadosPorNivel, dano, diferencaAtributos, novaSessao, poderUsavel, pvTotal,
-  pilarTexto, usoDoPoder, usosPorDiaDoPoder,
+  pilarTexto, usoDoPoder, usosPorDiaDoPoder, validarFicha,
 } from '../engine';
 import type { Ficha } from '../model/types';
 import { abaAtributos } from './abas/atributos';
@@ -44,9 +44,18 @@ export function iniciar(raiz: HTMLElement): void {
   const persistir = (): void => salvar(ficha, sessao);
   const avisar = (texto: string): void => definirTexto(aviso, texto);
 
+  /** Um erro em uma atualização não derruba as demais: o app segue funcionando e o erro fica no console. */
+  function executarSeguro(fn: () => void): void {
+    try {
+      fn();
+    } catch (erro) {
+      console.error('Erro ao atualizar a interface', erro);
+    }
+  }
+
   function atualizarTudo(): void {
-    for (const fn of ligacoesGlobais) fn();
-    for (const fn of ligacoesAba) fn();
+    for (const fn of ligacoesGlobais) executarSeguro(fn);
+    for (const fn of ligacoesAba) executarSeguro(fn);
   }
 
   const ctx: Contexto = {
@@ -138,6 +147,9 @@ export function iniciar(raiz: HTMLElement): void {
     for (const a of alertasPilar(ficha)) {
       alertas.append(h('div', { class: 'alerta-caixa', role: 'alert' },
         h('p', {}, `${a.nome} exige o aspecto do mundo ${ficha.pilar.nome || 'do pilar'} ${a.requer}, e o pilar atual está em ${a.atual}: o poder só funciona quando o aspecto chegar a ${a.requer}.`)));
+    }
+    for (const a of validarFicha(ficha)) {
+      alertas.append(h('div', { class: 'alerta-caixa', role: 'alert', 'data-alerta': a.codigo }, h('p', {}, a.mensagem)));
     }
     const d = diferencaAtributos(ficha);
     if (d.excedeu) {
@@ -266,7 +278,16 @@ export function iniciar(raiz: HTMLElement): void {
       Poderes: () => abaPoderes(ctx),
       Tsu: () => abaTsu(ctx),
     };
-    conteudo.append(construtores[abaAtiva]());
+    // Uma aba que falha ao montar mostra uma mensagem no lugar dela; o restante do app continua funcionando.
+    try {
+      conteudo.append(construtores[abaAtiva]());
+    } catch (erro) {
+      console.error(`Erro ao montar a aba ${abaAtiva}`, erro);
+      limpar(conteudo);
+      ligacoesAba = [];
+      conteudo.append(h('div', { class: 'alerta-caixa', role: 'alert' },
+        h('p', {}, `Não foi possível exibir a aba ${abaAtiva}: ${(erro as Error).message}. As demais abas continuam funcionando.`)));
+    }
   }
 
   // ---------- Rodapé: exportar, importar e restaurar ----------

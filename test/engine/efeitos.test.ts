@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import antiga from '../fixtures/alexsander-v2-sem-escala.json';
 import dados from '../../src/data/alexsander.json';
+import { fichaCompleta } from '../fixtures/ficha-completa';
 import {
   alertasPilar,
   efeitosDoPoder,
@@ -21,7 +22,8 @@ import {
 import { importarJson } from '../../src/import';
 import type { Ficha, Poder } from '../../src/model/types';
 
-const clonar = (): Ficha => structuredClone(dados) as unknown as Ficha;
+const clonar = (): Ficha => fichaCompleta();
+const clonarBuild = (): Ficha => structuredClone(dados) as unknown as Ficha;
 const poder = (f: Ficha, id: string): Poder => {
   const p = f.poderes.find((x) => x.id === id);
   if (!p) throw new Error(`Poder ausente: ${id}`);
@@ -43,10 +45,11 @@ describe('efeitos escaláveis', () => {
       pd.nivel = nivel;
       return ['imunidade_rodadas', 'vigor', 'absorcao_area', 'raio_km2', 'criaturas', 'anti_mental'].map((id) => efeito(f, 'protecao_divina', id));
     };
+    // A absorção em área é de 200 POR PONTO (regra da mesa, confirmada pelo jogador): 400 no nível 2.
     expect(valores(1)).toEqual([1, 0, 200, 5, 100, 150]);
-    expect(valores(2)).toEqual([2, 1, 200, 10, 200, 300]);
-    expect(valores(3)).toEqual([3, 1, 200, 15, 300, 450]);
-    expect(valores(4)).toEqual([4, 2, 200, 20, 400, 600]);
+    expect(valores(2)).toEqual([2, 1, 400, 10, 200, 300]);
+    expect(valores(3)).toEqual([3, 1, 600, 15, 300, 450]);
+    expect(valores(4)).toEqual([4, 2, 800, 20, 400, 600]);
   });
 
   it('o Lugan Completo segue o coeficiente do livro por ponto (sem ajuste fixo) e a ação extra vem a cada 3 níveis', () => {
@@ -117,34 +120,35 @@ describe('subir a Proteção Divina de 1 para 2 muda tudo junto', () => {
       .toEqual([3904, 2, 300, 10, 200]);
   });
 
-  it('a reação de efeito mental soma 750 (600 + 150) com a Proteção Divina 1 e 900 (600 + 300) com ela no 2', () => {
+  it('a reação de efeito mental cita o bônus da Proteção Divina (+150 no nível 1, +300 no 2); o marcador soma continua valendo', () => {
     const reacaoMental = (f: Ficha): string => resumoBatalha(f, novaSessao(f)).reacoes.find((r) => r.situacao === 'Efeito mental divino')!.resposta;
     const f = nivel1();
-    expect(reacaoMental(f)).toBe('Somar o bônus de Lugan Completo (+600) e de Proteção Divina (+150), total +750.');
+    expect(reacaoMental(f)).toBe('Somar o bônus de Proteção Divina (+150).');
     poder(f, 'protecao_divina').nivel = 2;
-    expect(reacaoMental(f)).toBe('Somar o bônus de Lugan Completo (+600) e de Proteção Divina (+300), total +900.');
+    expect(reacaoMental(f)).toBe('Somar o bônus de Proteção Divina (+300).');
     expect(resolverTexto(f, '{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}')).toBe('900');
   });
 
   it('reações, lembretes, ações e descrições acompanham o poder', () => {
     const f = clonar();
+    f.acoes.push({ id: 'fogo_real', nome: 'Fogo Real', rolagem: '{poder.fogo_real.dano_rodada} de dano por rodada em {poder.fogo_real.area_km2} km²', notas: 'Contra divinos, +{poder.fogo_real.dano_divinos} de dano.' });
     const antes = resumoBatalha(f, novaSessao(f));
     expect(antes.lembretes).toContain('Proteção Divina: 4 rodada(s) por dia de imunidade.');
-    expect(antes.lembretes).toContain('Golpe Devastador: 3 ponto(s) (usos por dia).');
+    expect(antes.lembretes).toContain('Proteção Divina: 4 ponto(s) (usos por dia).');
     expect(antes.reacoes.find((r) => r.situacao === 'Dano absurdo ou divino')?.resposta).toBe('Proteção Divina: imune por 4 rodada(s) por dia.');
-    expect(antes.reacoes.find((r) => r.situacao === 'Área contra aliados ou cenário')?.resposta).toContain('absorve 200 de dano em 20 km²');
+    expect(antes.reacoes.find((r) => r.situacao === 'Área contra aliados ou cenário')?.resposta).toContain('absorve 800 de dano em 20 km²');
     expect(antes.acoes.find((a) => a.id === 'fogo_real')).toMatchObject({
-      rolagem: '400 de dano por rodada em 6 km²', notas: 'Contra divinos, ataques diretos recebem +300 de dano.',
+      rolagem: '400 de dano por rodada em 6 km²', notas: 'Contra divinos, +300 de dano.',
     });
-    poder(f, 'golpe_devastador').nivel = 5;
+    poder(f, 'protecao_divina').nivel = 5;
     poder(f, 'fogo_real').nivel = 3;
     poder(f, 'protecao_divina').descricao = 'Protege {poder.protecao_divina.criaturas} criaturas em {poder.protecao_divina.raio_km2} km².';
     const depois = resumoBatalha(f, novaSessao(f));
-    expect(depois.lembretes).toContain('Golpe Devastador: 5 ponto(s) (usos por dia).');
+    expect(depois.lembretes).toContain('Proteção Divina: 5 ponto(s) (usos por dia).');
     expect(depois.acoes.find((a) => a.id === 'fogo_real')).toMatchObject({
-      rolagem: '400 de dano por rodada em 3 km²', notas: 'Contra divinos, ataques diretos recebem +150 de dano.',
+      rolagem: '400 de dano por rodada em 3 km²', notas: 'Contra divinos, +150 de dano.',
     });
-    expect(depois.protecoes.find((p) => p.id === 'protecao_divina')?.descricao).toBe('Protege 400 criaturas em 20 km².');
+    expect(depois.protecoes.find((p) => p.id === 'protecao_divina')?.descricao).toBe('Protege 500 criaturas em 25 km².');
   });
 });
 
@@ -155,7 +159,8 @@ describe('resolverTexto', () => {
     expect(resolverTexto(f, '{poder.protecao_divina.nivel}')).toBe('4');
     expect(resolverTexto(f, '{poder.protecao_divina.raio_km2}')).toBe('20');
     expect(resolverTexto(f, '{poder.protecao_divina.raio_km2.porPonto}')).toBe('5');
-    expect(resolverTexto(f, '{poder.protecao_divina.absorcao_area.fixo}')).toBe('200');
+    expect(resolverTexto(f, '{poder.protecao_divina.absorcao_area.porPonto}')).toBe('200');
+    expect(resolverTexto(f, '{poder.fogo_real.dano_rodada.fixo}')).toBe('400');
     expect(resolverTexto(f, '{soma:protecao_divina.criaturas + lugan_completo.anti_mental}')).toBe('1.000');
     expect(resolverTexto(f, '{soma:poder.protecao_divina.raio_km2+poder.fogo_real.area_km2}')).toBe('26');
   });
@@ -216,11 +221,11 @@ describe('patamares e o card de absorção', () => {
     expect(card(f).resumo).toContain('próximo patamar: nível 6, reduz a Tsu real com 1d+1');
   });
 
-  it('o card traz os efeitos no nível atual: 4 rodadas, +2000 PV, absorve 200, 20 km², 400 criaturas e +600 contra mentais', () => {
+  it('o card traz os efeitos no nível atual: 4 rodadas, +2000 PV, absorve 800, 20 km², 400 criaturas e +600 contra mentais', () => {
     const textos = card(clonar()).efeitos.map((e) => e.texto);
     expect(textos).toContain('Imunidade total: 4 rodadas por dia');
     expect(textos).toContain('PV extras: +2000 PV');
-    expect(textos).toContain('Absorção de dano no cenário e nos envolvidos: 200 de dano');
+    expect(textos).toContain('Absorção de dano no cenário e nos envolvidos: 800 de dano');
     expect(textos).toContain('Raio da proteção: 20 km²');
     expect(textos).toContain('Criaturas protegidas: 400 criaturas');
     expect(textos).toContain('Anula efeitos mentais divinos: 600');
@@ -355,7 +360,7 @@ describe('migração dos efeitos e dos textos vivos', () => {
   });
 
   it('a ficha salva antes da escala termina igual à embutida (níveis da semente do pilar)', () => {
-    expect(migrarFicha(structuredClone(antiga))).toStrictEqual({ ...clonar(), revisaoDados: 0 });
+    expect(migrarFicha(structuredClone(antiga))).toStrictEqual({ ...clonarBuild(), revisaoDados: 0 });
   });
 });
 

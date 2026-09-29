@@ -1,6 +1,6 @@
 {
   "versao": 2,
-  "revisaoDados": 7,
+  "revisaoDados": 8,
   "identidade": {
     "nome": "Alexsander Somar III",
     "jogador": "Pablo Maciel",
@@ -14,17 +14,6 @@
   "pilar": {
     "nome": "Justiça",
     "nivel": 3,
-    "pacotePorNivel": {
-      "lugan_completo": 2,
-      "protecao_divina": 1,
-      "campeao_do_combate_divino": 2,
-      "o_filho_de_hagashi": 4,
-      "lugan_da_batalha": 1,
-      "forca_das_montanhas_divinas": 1,
-      "golpe_devastador": 1,
-      "manipulador_de_tsu_real": 1,
-      "fogo_real": 2
-    },
     "efeitos": [
       {
         "id": "teste_dragao",
@@ -627,12 +616,7 @@
   "pvExtras": [],
   "combate": {
     "ataqueArmaBranca": {
-      "fontes": [
-        {
-          "nome": "Outros",
-          "valor": 120
-        }
-      ],
+      "fontes": [],
       "dadosExtras": [
         {
           "nome": "Jikar",
@@ -647,32 +631,17 @@
       "fieisPor": null
     },
     "ataqueLuta": {
-      "fontes": [
-        {
-          "nome": "Outros",
-          "valor": 70
-        }
-      ],
+      "fontes": [],
       "dadosExtras": [],
       "fieisPor": null
     },
     "ataqueArmaFogo": {
-      "fontes": [
-        {
-          "nome": "Outros",
-          "valor": 70
-        }
-      ],
+      "fontes": [],
       "dadosExtras": [],
       "fieisPor": null
     },
     "esquivar": {
-      "fontes": [
-        {
-          "nome": "Outros",
-          "valor": 120
-        }
-      ],
+      "fontes": [],
       "dadosExtras": [
         {
           "nome": "Jikar",
@@ -682,12 +651,7 @@
       "fieisPor": 100
     },
     "bloquear": {
-      "fontes": [
-        {
-          "nome": "Outros",
-          "valor": 120
-        }
-      ],
+      "fontes": [],
       "dadosExtras": [
         {
           "nome": "Jikar",
@@ -697,12 +661,7 @@
       "fieisPor": 100
     },
     "aparar": {
-      "fontes": [
-        {
-          "nome": "Outros",
-          "valor": 120
-        }
-      ],
+      "fontes": [],
       "dadosExtras": [
         {
           "nome": "Jikar",
@@ -738,10 +697,8 @@
       "id": "velocidade_divina",
       "nome": "Velocidade Divina",
       "nivel": 2,
-      "tipo": "passivo",
+      "tipo": "removido",
       "descricao": "Dá {poder.velocidade_divina.acoes_velocidade} ação(ões) de velocidade contra outro Lugan. Contra seres não lugânicos, dá {poder.velocidade_divina.acoes_extras} ações extras. Deslocamento de {poder.velocidade_divina.velocidade_kmh} km/h.",
-      "pontosLivres": 2,
-      "valorBasePilar": 0,
       "origem": "livre",
       "escala": {
         "efeitos": [
@@ -781,12 +738,10 @@
     {
       "id": "lugan_da_batalha",
       "nome": "Lugan da Batalha",
-      "nivel": 5,
+      "nivel": 1,
       "tipo": "passivo",
       "descricao": "+{poder.lugan_da_batalha.ataque_armaBranca} em qualquer ataque; +{poder.lugan_da_batalha.defesa_esquivar} em qualquer defesa; +{poder.lugan_da_batalha.dano} no final do dano; pressão de cada ataque em {poder.lugan_da_batalha.pressao_km2} km².",
-      "pontosLivres": 2,
-      "valorBasePilar": 1,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "ataquePorNivel": {
           "ataqueArmaBranca": 50,
@@ -812,15 +767,13 @@
       "id": "golpe_devastador",
       "nome": "Golpe Devastador de Lugan",
       "nivel": 3,
-      "tipo": "ativo",
+      "tipo": "removido",
       "descricao": "+{poder.golpe_devastador.dados_ataque}d×100 no ataque; +{poder.golpe_devastador.dados_dano}d no multiplicador de dano (com o ajuste fixo de −1d do golpe); pressão de {poder.golpe_devastador.pressao_km2} km²; atinge todos os divinos em {poder.golpe_devastador.raio_m} m do impacto; {poder.golpe_devastador.usos} usos por dia (sem pontos, custa {poder.golpe_devastador.custo_pv} PV).",
-      "pontosLivres": 0,
-      "valorBasePilar": 1,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
-        "usosPorNivel": 1,
         "dadosAtaquePorNivel": 1,
         "dadosDanoPorNivel": 1,
+        "usosPorNivel": 1,
         "efeitos": [
           {
             "id": "pressao_km2",
@@ -850,20 +803,16 @@
       "nome": "Portador da Jikar",
       "nivel": null,
       "tipo": "item",
-      "descricao": "[+1d] dano; +3d×100 ataque/defesa. Inimigos só fazem 1 ataque contra você. Aliados 3 km: divinos +250; não divinos +100. Ignora mentira, ilusão e invisibilidade. Contra grupo, só metade pode te atacar. Jikar retorna à vontade.",
-      "pontosLivres": null,
-      "valorBasePilar": 0,
+      "descricao": "+3d×100 em ataque e defesa; +1d no dano; inimigos só fazem 1 ataque contra o portador; mentira, ilusão e invisibilidade não o afetam; contra vários inimigos só metade ataca; aliados divinos em 3 km recebem +250 em ataque, defesa e dano; aliados não divinos recebem +100; a Jikar retorna pela vontade do dono.",
       "origem": "item"
     },
     {
       "id": "campeao_do_combate_divino",
       "nome": "Campeão do Combate Divino",
-      "nivel": 6,
+      "nivel": 3,
       "tipo": "passivo",
       "descricao": "escolha a linha de arma da vida dele: Espada / Katana / Jikar; +{poder.campeao_do_combate_divino.ataque_armaBranca} nas rolagens de ataque usando essa arma; +{poder.campeao_do_combate_divino.defesa_aparar} nas rolagens de defesa usando essa arma; +{poder.campeao_do_combate_divino.dano} no dano físico com essa arma; pressão de ataque em {poder.campeao_do_combate_divino.pressao_km2} km².",
-      "pontosLivres": 0,
-      "valorBasePilar": 2,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "ataquePorNivel": {
           "ataqueArmaBranca": 70,
@@ -883,12 +832,10 @@
     {
       "id": "forca_das_montanhas_divinas",
       "nome": "Força das Montanhas Divinas",
-      "nivel": 3,
-      "tipo": "passivo",
+      "nivel": 1,
+      "tipo": "removido",
       "descricao": "[+{poder.forca_das_montanhas_divinas.atributo_forca}] Força permanente; ataques que usam Força afetam {poder.forca_das_montanhas_divinas.raio_km2} km²; causar terremoto em linha de 500 m por {poder.forca_das_montanhas_divinas.terremoto_km2} km²; quem estiver no caminho testa Esquiva contra o ataque do Lugan; quem falhar sofre o dano.",
-      "pontosLivres": 0,
-      "valorBasePilar": 1,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "atributoPorNivel": {
           "atributo": "forca",
@@ -913,12 +860,10 @@
     {
       "id": "protecao_divina",
       "nome": "Proteção Divina",
-      "nivel": 4,
+      "nivel": 2,
       "tipo": "defesa",
       "descricao": "{poder.protecao_divina.imunidade_rodadas} rodada(s) por dia de imunidade total a dano, divino ou não; +{poder.protecao_divina.pv_extra} PV extras; +{poder.protecao_divina.vigor} na rolagem de vigor lugânico; proteção de área em {poder.protecao_divina.raio_km2} km²; absorve {poder.protecao_divina.absorcao_area} de dano no cenário e em todos os envolvidos naquele ataque; pode escolher até {poder.protecao_divina.criaturas} criaturas por dia para proteger; essas criaturas recebem 2 barras de CD e +15 em ataque, defesa e perícias; bônus de +{poder.protecao_divina.anti_mental} para anular efeitos mentais divinos.",
-      "pontosLivres": 1,
-      "valorBasePilar": 1,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "pvPorNivel": 500,
         "usosPorNivel": 1,
@@ -938,8 +883,7 @@
           {
             "id": "absorcao_area",
             "rotulo": "Absorção de dano no cenário e nos envolvidos",
-            "porPonto": 0,
-            "fixo": 200,
+            "porPonto": 200,
             "unidade": "de dano"
           },
           {
@@ -979,13 +923,11 @@
     {
       "id": "o_filho_de_hagashi",
       "nome": "O Filho de Hagashi",
-      "nivel": 12,
-      "tipo": "passivo",
+      "nivel": 4,
+      "tipo": "removido",
       "descricao": "protege Hagashi contra dano em área de {poder.o_filho_de_hagashi.area_km} km do reino; reduz {poder.o_filho_de_hagashi.protecao.porPonto} de dano por ponto, então {poder.o_filho_de_hagashi.protecao} de proteção territorial; vincula {poder.o_filho_de_hagashi.fieis} hagashianos fiéis; esses fiéis recebem proteção contra dano em área; fiéis ganham +{poder.o_filho_de_hagashi.bonus_fieis} em ataque e defesa quando Alexander desejar; esse bônus dura 8 horas e pode ser usado 1 vez a cada 24h; Alexander ganha +1 em ataque e defesa para cada 200 fiéis hagashianos; o dano dele aumenta +1 para cada 400 fiéis; a morte desses fiéis diminui esse poder.",
       "usosPorDia": 1,
-      "pontosLivres": 0,
-      "valorBasePilar": 4,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "fieisPorNivel": 8000,
         "efeitos": [
@@ -1012,13 +954,11 @@
     {
       "id": "lugan_completo",
       "nome": "Lugan Completo",
-      "nivel": 6,
-      "tipo": "passivo",
+      "nivel": 1,
+      "tipo": "removido",
       "descricao": "voo de {poder.lugan_completo.voo_kmh} km/h; altura máxima de voo de {poder.lugan_completo.voo_altura_m} m; +{poder.lugan_completo.ataque_armaBranca} em qualquer ataque; +{poder.lugan_completo.defesa_esquivar} em qualquer defesa; +{poder.lugan_completo.dano} no dano; {poder.lugan_completo.acao_extra} ação(ões) extra(s) por velocidade; pressão de ataque em {poder.lugan_completo.pressao_m} m ao redor; bônus de +{poder.lugan_completo.anti_mental} para anular efeitos mentais divinos; comunicação com Kitaicos; seguidores fiéis: 1d × 1.000.",
       "mostrarNaBatalha": true,
-      "pontosLivres": 0,
-      "valorBasePilar": 2,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "ataquePorNivel": {
           "ataqueArmaBranca": 30,
@@ -1068,12 +1008,10 @@
     {
       "id": "manipulador_de_tsu_real",
       "nome": "Manipulador de Tsu Real",
-      "nivel": 3,
-      "tipo": "passivo",
+      "nivel": 1,
+      "tipo": "removido",
       "descricao": "sua perícia vira Manipular Tsu Real; recebe +{poder.manipulador_de_tsu_real.ataque_magico} em Manipular Tsu Real; danos mágicos recebem +{poder.manipulador_de_tsu_real.dano_magico}; pode conjurar uma magia simultânea em {poder.manipulador_de_tsu_real.locais} locais de Kitai; se a magia for em alvo, pode atingir {poder.manipulador_de_tsu_real.alvos} alvos simultâneos; pode dar +{poder.manipulador_de_tsu_real.defesa_aliados} em def para companheiros Lugans.(nao ataca)",
-      "pontosLivres": 0,
-      "valorBasePilar": 1,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "ataquePorNivel": {
           "ataqueMagico": 70
@@ -1105,12 +1043,10 @@
     {
       "id": "fogo_real",
       "nome": "Fogo Real",
-      "nivel": 6,
-      "tipo": "ativo",
+      "nivel": 2,
+      "tipo": "removido",
       "descricao": "Manipula fogo real em {poder.fogo_real.area_km2} km². Causa {poder.fogo_real.dano_rodada} dano/rodada. Contra divinos: ataques diretos recebem +{poder.fogo_real.dano_divinos} dano. Alvos de água sofrem ×1,5 dano. Não divinos são incinerados ou testam Esquiva para sofrer 1/4.",
-      "pontosLivres": 0,
-      "valorBasePilar": 2,
-      "origem": "pilar",
+      "origem": "livre",
       "escala": {
         "efeitos": [
           {
@@ -1172,22 +1108,11 @@
       "nome": "Terra Real",
       "rolagem": "1d×48 direto no PV",
       "notas": "Dano aplicado direto nos pontos de vida do alvo."
-    },
-    {
-      "id": "fogo_real",
-      "nome": "Fogo Real",
-      "rolagem": "{poder.fogo_real.dano_rodada} de dano por rodada em {poder.fogo_real.area_km2} km²",
-      "notas": "Contra divinos, ataques diretos recebem +{poder.fogo_real.dano_divinos} de dano."
     }
   ],
   "lembretes": [
-    "Jikar: +3d×100 em ataque e defesa.",
-    "Jikar: +1d no dano.",
-    "Inimigos só fazem 1 ataque contra você.",
-    "Contra um grupo, só metade pode atacar.",
-    "Ilusão, mentira e invisibilidade não funcionam contra você.",
     "Proteção Divina: {poder.protecao_divina.imunidade_rodadas} rodada(s) por dia de imunidade.",
-    "Golpe Devastador: {poder.golpe_devastador.nivel} ponto(s) (usos por dia).",
+    "Proteção Divina: {poder.protecao_divina.nivel} ponto(s) (usos por dia).",
     "Terra Real: 1d×48 direto no PV."
   ],
   "reacoes": [
@@ -1201,7 +1126,7 @@
     },
     {
       "situacao": "Efeito mental divino",
-      "resposta": "Somar o bônus de Lugan Completo (+{poder.lugan_completo.anti_mental}) e de Proteção Divina (+{poder.protecao_divina.anti_mental}), total +{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}."
+      "resposta": "Somar o bônus de Proteção Divina (+{poder.protecao_divina.anti_mental})."
     },
     {
       "situacao": "Ilusão, mentira ou invisibilidade",
@@ -1209,7 +1134,7 @@
     },
     {
       "situacao": "Área contra aliados ou cenário",
-      "resposta": "Proteção Divina absorve {poder.protecao_divina.absorcao_area} de dano em {poder.protecao_divina.raio_km2} km²; O Filho de Hagashi protege os fiéis."
+      "resposta": "Proteção Divina absorve {poder.protecao_divina.absorcao_area} de dano em {poder.protecao_divina.raio_km2} km²."
     }
   ],
   "fieis": 0,

@@ -2,7 +2,7 @@
 // Ordem: Minha rodada, Ataques, Defesas, Absorções e proteções, Quando for atacado e Lembretes.
 // A estrutura (quantos cartões) vem da ficha ao abrir a aba; os valores são refeitos a cada mudança.
 import { comSinal, poderUsavel, resumoBatalha, usoDoPoder, usosPorDiaDoPoder, type ResumoBatalha } from '../../engine';
-import type { ChaveCombate, Poder } from '../../model/types';
+import type { ChaveCombate, GolpeEspecial, Poder } from '../../model/types';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, definirValor, entradaNumero, h, inteiro, limpar } from '../dom';
 import { aplicarPv, descansar, limitarPv, mudarFadiga, usarPoder } from '../sessao';
@@ -85,6 +85,26 @@ function blocoFadiga(ctx: Contexto): HTMLElement {
       h('button', { type: 'button', class: 'grande', onclick: () => mudarFadiga(ctx, -quantia()) }, 'Recuperar')));
 }
 
+/** Topo da Batalha: nome, pilar (informativo), item principal, build e o resumo de PV e da Proteção Divina. */
+function cartaoTopo(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
+  const nome = h('h1', { class: 'nome-batalha' });
+  const linhas = h('ul', { class: 'topo-batalha', 'aria-label': 'Resumo da build' });
+  ctx.ligar(() => {
+    const x = r();
+    definirTexto(nome, ctx.ficha().identidade.nome || 'Sem nome');
+    limpar(linhas);
+    const itens = [
+      `Pilar: ${x.topo.pilar} (informativo)`,
+      `Item principal: ${x.topo.itemPrincipal || '—'}`,
+      `Build: ${x.topo.build}`,
+      `PV: base ${x.pv.base} + ${x.pv.protecaoDivina} da Proteção Divina${x.pv.outros !== 0 ? ` + ${x.pv.outros} de outros` : ''} = ${x.pv.total}`,
+      x.topo.protecaoDivina,
+    ];
+    for (const t of itens) if (t) linhas.append(h('li', {}, t));
+  });
+  return h('section', { class: 'cartao topo', 'aria-label': 'Topo da batalha' }, nome, linhas);
+}
+
 function cartaoMinhaRodada(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
   const mini = (rotulo: string, texto: (x: ResumoBatalha) => string): HTMLElement => {
     const valor = h('strong', {});
@@ -110,8 +130,16 @@ function cartaoMinhaRodada(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
 
 function cartaoAtaqueNormal(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
   const f = ctx.ficha;
+  const detalheAtaque = h('p', { class: 'detalhe composicao' });
+  const detalheDano = h('p', { class: 'detalhe composicao' });
+  ctx.ligar(() => {
+    definirTexto(detalheAtaque, r().ataqueDetalhe);
+    definirTexto(detalheDano, r().danoDetalhe);
+  });
   return h('section', { class: 'cartao', 'aria-label': 'Ataque normal' },
-    h('h3', {}, 'Ataque normal'),
+    h('h3', {}, 'Ataque normal com Jikar'),
+    detalheAtaque,
+    detalheDano,
     h('div', { class: 'grade grade-larga' },
       cartaoValor(ctx, {
         chave: 'bat-ataque', titulo: 'Ataque', destaque: true,
@@ -126,10 +154,11 @@ function cartaoAtaqueNormal(ctx: Contexto, r: () => ResumoBatalha): HTMLElement 
       })));
 }
 
-function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTMLElement {
+/** Cartão do golpe de id dado. O resumo omite os golpes cujo poder foi removido, então o golpe é buscado por id, nunca por posição. */
+function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, golpeId: string): HTMLElement {
   const f = ctx.ficha;
-  const atual = () => f().golpes[indice];
-  const golpe = () => r().golpes[indice];
+  const atual = () => f().golpes.find((g) => g.id === golpeId) as GolpeEspecial;
+  const golpe = () => r().golpes.find((g) => g.id === golpeId);
   const pressao = h('p', { class: 'detalhe' });
   const composicao = h('p', { class: 'detalhe composicao' });
   ctx.ligar(() => {
@@ -150,12 +179,12 @@ function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTM
     h('div', { class: 'grade grade-larga' },
       cartaoValor(ctx, {
         chave: `bat-golpe-${atual().id}-ataque`, titulo: 'Ataque',
-        texto: () => golpe().ataque.texto,
+        texto: () => golpe()?.ataque.texto ?? '—',
         linhas: () => linhasCombate(f(), 'ataqueArmaBranca', atual()),
       }),
       cartaoValor(ctx, {
         chave: `bat-golpe-${atual().id}-dano`, titulo: 'Dano',
-        texto: () => golpe().dano.texto,
+        texto: () => golpe()?.dano.texto ?? '—',
         linhas: () => linhasDano(f(), atual()),
       })),
     pressao,
@@ -186,7 +215,7 @@ function secaoAtaques(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
   return h('section', { 'aria-label': 'Ataques' },
     h('h2', {}, 'Ataques'),
     cartaoAtaqueNormal(ctx, r),
-    ...ctx.ficha().golpes.map((_, i) => cartaoGolpe(ctx, r, i)),
+    ...r().golpes.map((g) => cartaoGolpe(ctx, r, g.id)),
     acoes.length > 0 ? h('h3', { class: 'subtitulo' }, 'Ações de Tsu real e outras') : null,
     acoes.length > 0 ? h('div', { class: 'grade grade-larga' }, ...acoes.map((_, i) => cartaoAcao(ctx, r, i))) : null);
 }
@@ -241,42 +270,54 @@ function cartaoProtecao(ctx: Contexto, r: () => ResumoBatalha, id: string, temUs
  * criaturas protegidas, bônus contra efeito mental divino e a redução de Tsu real (a partir do patamar do nível 3).
  */
 function cartaoProtecaoDivina(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
-  const titulo = h('h3', {});
+  const titulo = h('h2', {});
   const composicao = h('p', { class: 'detalhe composicao' });
   const lista = h('ul', { class: 'efeitos-protecao', 'aria-label': 'Efeitos da Proteção Divina' });
   ctx.ligar(() => {
     const d = r().protecaoDivina;
     if (!d) return;
-    definirTexto(titulo, `Proteção Divina · nível ${d.nivel ?? 0}`);
+    definirTexto(titulo, `Proteção Divina ${d.nivel ?? 0}`);
     definirTexto(composicao, d.composicao);
-    const tsu = d.reduzTsuReal
-      ? `Redução de Tsu real: sim, com ${d.reducaoTsuReal ?? 'dado'}`
-        + (d.proximaReducaoTsuReal ? ` (próximo: nível ${d.proximaReducaoTsuReal.nivel}, ${d.proximaReducaoTsuReal.dado ?? 'melhora'})` : '')
-      : `Redução de Tsu real: ainda não${d.proximaReducaoTsuReal ? ` (a partir do nível ${d.proximaReducaoTsuReal.nivel}, ${d.proximaReducaoTsuReal.dado ?? 'dado'})` : ''}`;
     const linhas = [
       `Imunidade total: ${d.imunidadeRodadas} ${d.imunidadeRodadas === 1 ? 'rodada' : 'rodadas'} por dia`,
       `PV extra: ${comSinal(d.pvExtra)}`,
       `Absorção em área: ${d.absorcaoArea.toLocaleString('pt-BR')} de dano em ${kmQuadrados(d.raioKm2)}`,
-      `Criaturas protegidas: ${d.criaturasProtegidas.toLocaleString('pt-BR')}`,
+      `Criaturas protegidas: ${d.criaturasProtegidas.toLocaleString('pt-BR')} (2 barras de CD e +15 em ataque, defesa e perícias)`,
       `Bônus contra efeito mental divino: ${comSinal(d.antiMental)}`,
-      tsu,
+      d.textoTsuReal,
     ];
     limpar(lista);
     for (const l of linhas) lista.append(h('li', {}, l));
   });
-  return h('article', { class: 'cartao protecao protecao-divina', 'data-poder': 'protecao_divina' },
+  return h('section', { class: 'cartao protecao protecao-divina destaque-cartao', 'data-poder': 'protecao_divina', 'aria-label': 'Proteção Divina' },
     titulo, composicao, lista, r().protecaoDivina?.usosPorDia !== null ? controleUso(ctx, 'protecao_divina') : null);
 }
 
+/** Card permanente da Jikar (item principal): dados extras e todos os lembretes do Portador da Jikar. */
+function cartaoJikar(ctx: Contexto, r: () => ResumoBatalha): HTMLElement | null {
+  if (!r().jikar) return null;
+  const titulo = h('h2', {});
+  const bonus = h('p', { class: 'valor-medio' });
+  const lista = h('ul', { class: 'lembretes', 'aria-label': 'Lembretes da Jikar' });
+  ctx.ligar(() => {
+    const j = r().jikar;
+    if (!j) return;
+    definirTexto(titulo, j.nome || 'Jikar');
+    definirTexto(bonus, `+${j.dadosAtaqueDefesa}d×100 em ataque e defesa · +${j.dadosDano}d no dano`);
+    limpar(lista);
+    for (const t of j.lembretes) lista.append(h('li', {}, t));
+  });
+  return h('section', { class: 'cartao jikar', 'aria-label': 'Jikar' }, titulo, bonus, lista);
+}
+
 function secaoProtecoes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
-  const protecoes = r().protecoes;
+  // A Proteção Divina e a Jikar têm cards próprios, mais acima.
+  const protecoes = r().protecoes.filter((p) => !(p.id === 'protecao_divina' && r().protecaoDivina) && !(p.id === 'portador_da_jikar' && r().jikar));
   return h('section', { 'aria-label': 'Absorções e proteções' },
     h('h2', {}, 'Absorções e proteções'),
     protecoes.length === 0
       ? h('p', { class: 'vazio' }, 'Nenhum poder marcado para aparecer aqui. Marque "Mostrar na aba Batalha" na aba Poderes.')
-      : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) => (p.id === 'protecao_divina' && r().protecaoDivina
-        ? cartaoProtecaoDivina(ctx, r)
-        : cartaoProtecao(ctx, r, p.id, p.uso !== null)))));
+      : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) => cartaoProtecao(ctx, r, p.id, p.uso !== null))));
 }
 
 /**
@@ -339,9 +380,12 @@ function secaoLembretes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
 export function abaBatalha(ctx: Contexto): HTMLElement {
   const r = (): ResumoBatalha => resumoBatalha(ctx.ficha(), ctx.sessao());
   return h('div', { class: 'aba-batalha' },
+    cartaoTopo(ctx, r),
     cartaoMinhaRodada(ctx, r),
     secaoAtaques(ctx, r),
     secaoDefesas(ctx, r),
+    r().protecaoDivina ? cartaoProtecaoDivina(ctx, r) : null,
+    cartaoJikar(ctx, r),
     secaoProtecoes(ctx, r),
     secaoPilar(ctx, r),
     secaoQuandoAtacado(ctx, r),

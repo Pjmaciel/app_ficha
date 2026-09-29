@@ -8,7 +8,7 @@ import { secaoTextosBatalha } from './textos-batalha';
 
 const TIPOS = Object.keys(ROTULO_TIPO_PODER) as TipoPoder[];
 
-const ROTULO_ORIGEM: Record<OrigemPoder, string> = { pilar: 'Pilar', livre: 'Livre', item: 'Item', manual: 'Manual' };
+const ROTULO_ORIGEM: Record<OrigemPoder, string> = { livre: 'Livre', item: 'Item', manual: 'Manual' };
 const ORIGENS = Object.keys(ROTULO_ORIGEM) as OrigemPoder[];
 
 type CampoEscala = 'danoPorNivel' | 'pvPorNivel' | 'usosPorNivel' | 'fieisPorNivel' | 'dadosAtaquePorNivel' | 'dadosDanoPorNivel';
@@ -224,7 +224,7 @@ function resolvida(ctx: Contexto, obter: () => string): HTMLElement {
   return p;
 }
 
-/** "Lugan da Batalha 5 — Pilar: 1 × 3 = 3 · Poderes livres: +2 · Total: 5": de onde vem o nível do poder (refeita a cada mudança). */
+/** "Proteção Divina 2 — nível informado (poderes livres)": o nível é o informado; o pilar não concede poderes (refeita a cada mudança). */
 function linhaPilar(ctx: Contexto, p: Poder): HTMLElement {
   const linha = h('p', { class: 'detalhe nivel-pilar' });
   ctx.ligar(() => definirTexto(linha, composicaoDoPoder(ctx.ficha(), p).texto));
@@ -240,12 +240,28 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     const raiz = h('article', { class: p.tipo === 'removido' ? 'cartao poder removido' : 'cartao poder' });
     const marca = h('input', { type: 'checkbox', checked: mostraNaBatalha(p), disabled: p.tipo === 'removido' });
     marca.addEventListener('change', () => { p.mostrarNaBatalha = marca.checked; ctx.mudou(); });
+    const reativar = h('button', {
+      type: 'button', class: 'destaque',
+      onclick: () => {
+        // Volta como ativo se o poder tem usos ou custo; senão, como passivo (o jogador ajusta o tipo se quiser).
+        const consumivel = p.custoFadiga !== undefined || p.usosPorDia !== undefined || p.escala?.usosPorNivel !== undefined;
+        p.tipo = consumivel ? 'ativo' : 'passivo';
+        tipo.value = p.tipo;
+        raiz.classList.remove('removido');
+        marca.checked = mostraNaBatalha(p);
+        marca.disabled = false;
+        reativar.hidden = true;
+        ctx.mudou();
+      },
+    }, 'Reativar poder');
+    reativar.hidden = p.tipo !== 'removido';
     const tipo = selecao<TipoPoder>(TIPOS.map((t) => [t, ROTULO_TIPO_PODER[t]]), p.tipo, (v) => {
       p.tipo = v;
       raiz.classList.toggle('removido', v === 'removido');
       // Sem escolha explícita, a marca segue o tipo (defesa e item aparecem por padrão).
       marca.checked = mostraNaBatalha(p);
       marca.disabled = v === 'removido';
+      reativar.hidden = v !== 'removido';
       ctx.mudou();
     });
     const descricao = h('textarea', { rows: 4 });
@@ -261,12 +277,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     raiz.append(
       h('div', { class: 'campos' },
         campo('Nome', nome),
-        campo('Pontos livres (vazio = sem nível)', entradaNumero(p.pontosLivres ?? null, (v) => { p.pontosLivres = v; ctx.mudou(); }, { aceitaVazio: true })),
-        campo('Valor base do pilar (pontos por nível do pilar)', entradaNumero(f().pilar.pacotePorNivel[p.id] ?? null, (v) => {
-          if (v === null || v === 0) delete f().pilar.pacotePorNivel[p.id];
-          else f().pilar.pacotePorNivel[p.id] = v;
-          ctx.mudou();
-        }, { aceitaVazio: true })),
+        campo('Nível (vazio = sem nível)', entradaNumero(p.nivel, (v) => { p.nivel = v; ctx.mudou(); }, { min: 0, aceitaVazio: true })),
         campo('Origem', selecao<OrigemPoder>(ORIGENS.map((o) => [o, ROTULO_ORIGEM[o]]), p.origem ?? 'livre', (v) => { p.origem = v; ctx.mudou(); })),
         campo('Tipo', tipo),
         campo('Custo de fadiga', entradaOpcional('custoFadiga')),
@@ -277,6 +288,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
           ctx.mudou();
         }, { min: 0, aceitaVazio: true }))),
       linhaPilar(ctx, p),
+      reativar,
       resolvida(ctx, () => p.descricao),
       h('details', { class: 'descricao-poder' },
         h('summary', {}, 'Editar descrição (texto com marcadores)'),
@@ -312,7 +324,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     h('button', {
       type: 'button', class: 'destaque',
       onclick: () => {
-        f().poderes.push({ id: novoIdItem('poder'), nome: 'Novo poder', nivel: null, pontosLivres: null, origem: 'manual', tipo: 'passivo', descricao: '' });
+        f().poderes.push({ id: novoIdItem('poder'), nome: 'Novo poder', nivel: null, origem: 'manual', tipo: 'passivo', descricao: '' });
         desenhar(f().poderes.length - 1);
         ctx.mudou();
       },

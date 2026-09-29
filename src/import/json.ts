@@ -13,6 +13,7 @@ const CHAVES_COMBATE: ChaveCombate[] = [
 ];
 // 'defensivo' é o nome antigo de 'defesa': a migração o converte.
 const TIPOS_PODER = ['passivo', 'ativo', 'defesa', 'defensivo', 'item', 'recurso', 'removido'];
+// 'pilar' é a origem antiga (pacote do pilar, extinto): a migração converte a ficha para a build da mesa.
 const ORIGENS_PODER = ['pilar', 'livre', 'item', 'manual'];
 const ELEMENTOS = ['fogo', 'agua', 'ar', 'terra', 'luz', 'trevas'];
 
@@ -151,7 +152,7 @@ function exigirPilar(pilar: unknown): void {
   const pacote = pilar.pacotePorNivel;
   exigir(
     pacote === undefined || (ehObjeto(pacote) && Object.values(pacote).every(ehNumero)),
-    'pilar.pacotePorNivel deve ser um objeto de poder para valor base do pilar (numérico).',
+    'pilar.pacotePorNivel (extinto) deve ser um objeto de valores numéricos.',
   );
   exigirEfeitos(pilar.efeitos, 'pilar');
   exigir(

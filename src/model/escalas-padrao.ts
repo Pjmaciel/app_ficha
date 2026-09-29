@@ -58,7 +58,8 @@ export function escalaPadrao(id: string): EscalaPoder | undefined {
         efeitos: [
           efeito('imunidade_rodadas', 'Imunidade total', 1, { unidade: 'rodadas por dia' }),
           efeito('vigor', 'Rolagem de vigor lugânico', 1, { aCada: 2 }),
-          efeito('absorcao_area', 'Absorção de dano no cenário e nos envolvidos', 0, { fixo: 200, unidade: 'de dano' }),
+          // Regra da mesa (confirmada pelo jogador): 200 de absorção POR PONTO (400 no nível 2).
+          efeito('absorcao_area', 'Absorção de dano no cenário e nos envolvidos', 200, { unidade: 'de dano' }),
           efeito('raio_km2', 'Raio da proteção', 5, { unidade: 'km²' }),
           efeito('criaturas', 'Criaturas protegidas', 100, { unidade: 'criaturas' }),
           efeito('anti_mental', 'Anula efeitos mentais divinos', 150),
@@ -131,6 +132,8 @@ export function escalaPadrao(id: string): EscalaPoder | undefined {
  * Os textos antigos (com números fixos da planilha) são trocados pela migração só quando estão exatamente iguais; o que o jogador editou fica.
  */
 const DESCRICOES_VIVAS: Record<string, string> = {
+  portador_da_jikar:
+    "+3d×100 em ataque e defesa; +1d no dano; inimigos só fazem 1 ataque contra o portador; mentira, ilusão e invisibilidade não o afetam; contra vários inimigos só metade ataca; aliados divinos em 3 km recebem +250 em ataque, defesa e dano; aliados não divinos recebem +100; a Jikar retorna pela vontade do dono.",
   velocidade_divina:
     "Dá {poder.velocidade_divina.acoes_velocidade} ação(ões) de velocidade contra outro Lugan. Contra seres não lugânicos, dá {poder.velocidade_divina.acoes_extras} ações extras. Deslocamento de {poder.velocidade_divina.velocidade_kmh} km/h.",
   lugan_da_batalha:
@@ -155,6 +158,8 @@ const DESCRICOES_VIVAS: Record<string, string> = {
 
 /** Descrições antigas da planilha (números fixos), por id de poder. */
 const DESCRICOES_ANTIGAS: Record<string, string> = {
+  portador_da_jikar:
+    "[+1d] dano; +3d×100 ataque/defesa. Inimigos só fazem 1 ataque contra você. Aliados 3 km: divinos +250; não divinos +100. Ignora mentira, ilusão e invisibilidade. Contra grupo, só metade pode te atacar. Jikar retorna à vontade.",
   velocidade_divina:
     "Dá uma ação de velocidade contra outro Lugan. Contra seres não lugânicos, dá três ações extras.",
   lugan_da_batalha:

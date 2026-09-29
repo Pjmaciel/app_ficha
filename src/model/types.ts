@@ -23,8 +23,8 @@ export interface Pericia { id: string; nome: string; grupo: GrupoPericia; atribu
 
 /** `removido` é um estado (o poder deixa de valer sem sair da lista); os demais são a natureza do poder. */
 export type TipoPoder = 'passivo' | 'ativo' | 'defesa' | 'item' | 'recurso' | 'removido';
-/** De onde vem o poder: pacote do pilar, pontos livres (evolução, bônus ou recompensa), item ou cadastro manual. */
-export type OrigemPoder = 'pilar' | 'livre' | 'item' | 'manual';
+/** De onde vem o poder (regra da mesa: o pilar não concede poderes): pontos livres, item ou cadastro manual. */
+export type OrigemPoder = 'livre' | 'item' | 'manual';
 export type ChaveCombate = 'ataqueArmaBranca' | 'ataqueMagico' | 'ataqueLuta' | 'ataqueArmaFogo' | 'esquivar' | 'bloquear' | 'aparar';
 
 /**
@@ -89,18 +89,7 @@ export interface Poder {
   escala?: EscalaPoder;
   /** Aspecto do mundo (pilar) mínimo para o poder funcionar (ex.: honra 3); acima do pilar atual, a ficha alerta. */
   requerPilar?: number;
-  /**
-   * Valor base do pilar: pontos que o pacote do pilar concede a cada nível do pilar (espelho de
-   * `Pilar.pacotePorNivel[id]`, que é a fonte; derivado pelo motor em `aplicarPilar`). Zero fora do pacote.
-   */
-  valorBasePilar?: number;
-  /**
-   * Pontos livres (evolução pessoal, bônus, realocação ou recompensa; editável, nulo = poder sem nível).
-   * Somam por fora e não são multiplicados pelo nível do pilar.
-   * Regra: `nivel` = valorBasePilar × nível do pilar + pontosLivres (nunca abaixo de zero), calculado por `aplicarPilar`.
-   */
-  pontosLivres?: number | null;
-  /** Origem do poder; ausente, o motor a deduz (pacote do pilar, item ou livre). */
+  /** Origem do poder; ausente, o motor a deduz (item ou livre). O `nivel` é o nível informado (pontos livres). */
   origem?: OrigemPoder;
 }
 
@@ -158,15 +147,13 @@ export interface Regras {
 }
 
 /**
- * Pilar lugânico (aspecto do mundo), exibido como "Justiça 3". Cada poder do pacote recebe `pacotePorNivel[id] × nível
- * do pilar` pontos; subir o pilar concede o pacote de novo (soma) e descer o retira. Os pontos livres do poder ficam por fora.
+ * Pilar lugânico (aspecto do mundo), exibido como "Justiça 3". Regra da mesa: é só informativo/narrativo e não concede
+ * nem multiplica poderes; os efeitos e textos abaixo são apenas texto do card do pilar.
  */
 export interface Pilar {
   nome: string;
-  /** Aspecto do mundo, de 1 a 5. */
+  /** Aspecto do mundo, de 1 a 5 (informativo). */
   nivel: number;
-  /** Valor base do pilar de cada poder (por id): pontos concedidos a cada nível do pilar; multiplica o nível do pilar. */
-  pacotePorNivel: Record<string, number>;
   /** Efeitos do pilar no nível atual (ex.: teste do Dragão Vermelho = 800 × nível); marcadores `{pilar.<id>}`. */
   efeitos: EfeitoEscalavel[];
   /** Textos do card do pilar na aba Batalha; aceitam marcadores vivos (`{pilar.nivel}`, `{pilar.<efeito>}`). */
@@ -187,7 +174,7 @@ export interface Ficha {
     basePv: number;
     armaPrincipal: string;
   };
-  /** Pilar lugânico (aspecto do mundo): nome, nível 1 a 5, pacote de poderes por nível e efeitos escaláveis. */
+  /** Pilar lugânico (aspecto do mundo), só informativo: nome, nível 1 a 5, efeitos e textos narrativos; não concede poderes. */
   pilar: Pilar;
   regras: Regras;
   atributos: Record<AtributoId, Atributo>;

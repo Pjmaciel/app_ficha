@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AtributoId, ChaveCombate, Ficha, GrupoPericia } from '../../src/model/types';
 import dados from '../../src/data/alexsander.json';
+import { fichaCompleta } from '../fixtures/ficha-completa';
 import {
   alertaBonusNivel,
   baseAtributo,
@@ -26,11 +27,12 @@ import {
   usoDoPoder,
 } from '../../src/engine';
 
-const ficha = dados as Ficha;
+const ficha = fichaCompleta();
+const fichaBuild = dados as unknown as Ficha;
 
 /** Cópia profunda para testes que alteram a ficha sem contaminar os demais. */
 function clonar(): Ficha {
-  return structuredClone(ficha);
+  return fichaCompleta();
 }
 
 const golpeDevastador = ficha.golpes[0];
@@ -609,7 +611,7 @@ describe('resumoBatalha', () => {
     const nomes = resumo().protecoes.map((p) => p.nome);
     expect(nomes).toEqual(['Portador da Jikar', 'Proteção Divina', 'Lugan Completo']);
     const protecao = resumo().protecoes.find((p) => p.id === 'protecao_divina');
-    expect(protecao?.descricao).toContain('absorve 200');
+    expect(protecao?.descricao).toContain('absorve 800');
     expect(protecao?.uso).toMatchObject({ limite: 4, restantes: 4 });
   });
 
@@ -630,7 +632,7 @@ describe('resumoBatalha', () => {
 
   it('repassa ações, reações e lembretes editáveis da ficha', () => {
     const r = resumo();
-    expect(r.acoes.map((a) => a.nome)).toEqual(['Terra Real', 'Fogo Real']);
+    expect(r.acoes.map((a) => a.nome)).toEqual(['Terra Real']);
     expect(r.reacoes).toHaveLength(5);
     expect(r.lembretes).toContain('Terra Real: 1d×48 direto no PV.');
   });
@@ -707,7 +709,7 @@ describe('migrarFicha e os textos da aba Batalha', () => {
     a.acoes[0].nome = 'Alterada';
     a.lembretes.push('novo');
     expect(b.acoes[0].nome).toBe('Terra Real');
-    expect(b.lembretes).toHaveLength(8);
+    expect(b.lembretes).toHaveLength(3);
   });
 
   it('a migração da versão 1 também recebe os textos padrão', () => {
@@ -723,7 +725,7 @@ describe('migrarFicha e os textos da aba Batalha', () => {
       xp: { total: 0, atual: 0 },
     });
     expect(f.acoes).toEqual(ficha.acoes);
-    expect(f.lembretes).toHaveLength(8);
+    expect(f.lembretes).toHaveLength(3);
     expect(f.reacoes).toHaveLength(5);
   });
 });

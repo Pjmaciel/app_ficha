@@ -13,24 +13,14 @@ export const PRESSAO_GOLPE_POR_PONTO = 8;
 export function acoesPadrao(): AcaoBatalha[] {
   return [
     { id: 'terra_real', nome: 'Terra Real', rolagem: '1d×48 direto no PV', notas: 'Dano aplicado direto nos pontos de vida do alvo.' },
-    {
-      id: 'fogo_real',
-      nome: 'Fogo Real',
-      rolagem: '{poder.fogo_real.dano_rodada} de dano por rodada em {poder.fogo_real.area_km2} km²',
-      notas: 'Contra divinos, ataques diretos recebem +{poder.fogo_real.dano_divinos} de dano.',
-    },
   ];
 }
 
+/** Lembretes gerais da build atual; os da Jikar ficam no card permanente dela (descrição do Portador da Jikar). */
 export function lembretesPadrao(): string[] {
   return [
-    'Jikar: +3d×100 em ataque e defesa.',
-    'Jikar: +1d no dano.',
-    'Inimigos só fazem 1 ataque contra você.',
-    'Contra um grupo, só metade pode atacar.',
-    'Ilusão, mentira e invisibilidade não funcionam contra você.',
     'Proteção Divina: {poder.protecao_divina.imunidade_rodadas} rodada(s) por dia de imunidade.',
-    'Golpe Devastador: {poder.golpe_devastador.nivel} ponto(s) (usos por dia).',
+    'Proteção Divina: {poder.protecao_divina.nivel} ponto(s) (usos por dia).',
     'Terra Real: 1d×48 direto no PV.',
   ];
 }
@@ -44,16 +34,12 @@ export function reacoesPadrao(): Reacao[] {
     },
     {
       situacao: 'Efeito mental divino',
-      resposta:
-        'Somar o bônus de Lugan Completo (+{poder.lugan_completo.anti_mental}) e de Proteção Divina '
-        + '(+{poder.protecao_divina.anti_mental}), total +{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}.',
+      resposta: 'Somar o bônus de Proteção Divina (+{poder.protecao_divina.anti_mental}).',
     },
     { situacao: 'Ilusão, mentira ou invisibilidade', resposta: 'A Jikar nega.' },
     {
       situacao: 'Área contra aliados ou cenário',
-      resposta:
-        'Proteção Divina absorve {poder.protecao_divina.absorcao_area} de dano em {poder.protecao_divina.raio_km2} km²; '
-        + 'O Filho de Hagashi protege os fiéis.',
+      resposta: 'Proteção Divina absorve {poder.protecao_divina.absorcao_area} de dano em {poder.protecao_divina.raio_km2} km².',
     },
   ];
 }
@@ -61,12 +47,14 @@ export function reacoesPadrao(): Reacao[] {
 // Textos com números fixos das versões anteriores da semente e o texto vivo que os substitui: a migração troca
 // só os que estão exatamente iguais (o que o jogador editou fica como está).
 const TEXTOS_ANTIGOS: Record<string, string> = {
-  '400 de dano por rodada em 2 km²': acoesPadrao()[1].rolagem,
-  'Contra divinos, ataques diretos recebem +200 de dano.': acoesPadrao()[1].notas,
-  'Proteção Divina: 1 rodada por dia de imunidade.': lembretesPadrao()[5],
-  'Golpe Devastador: 3 pontos (usos por dia).': lembretesPadrao()[6],
+  '400 de dano por rodada em 2 km²': '{poder.fogo_real.dano_rodada} de dano por rodada em {poder.fogo_real.area_km2} km²',
+  'Contra divinos, ataques diretos recebem +200 de dano.': 'Contra divinos, ataques diretos recebem +{poder.fogo_real.dano_divinos} de dano.',
+  'Proteção Divina: 1 rodada por dia de imunidade.': lembretesPadrao()[0],
+  'Golpe Devastador: 3 pontos (usos por dia).': 'Golpe Devastador: {poder.golpe_devastador.nivel} ponto(s) (usos por dia).',
   'Proteção Divina: imune por 1 rodada por dia.': reacoesPadrao()[1].resposta,
-  'Somar o bônus de Lugan Completo (+200) e de Proteção Divina (+150).': reacoesPadrao()[2].resposta,
+  'Somar o bônus de Lugan Completo (+200) e de Proteção Divina (+150).':
+    'Somar o bônus de Lugan Completo (+{poder.lugan_completo.anti_mental}) e de Proteção Divina (+{poder.protecao_divina.anti_mental}), '
+    + 'total +{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}.',
   'Proteção Divina absorve 200 de dano; O Filho de Hagashi protege os fiéis.': reacoesPadrao()[4].resposta,
 };
 
