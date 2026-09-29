@@ -32,7 +32,7 @@ export const ROTULO_ELEMENTO: Record<Elemento, string> = {
 };
 
 export const ROTULO_TIPO_PODER: Record<TipoPoder, string> = {
-  passivo: 'Passivo', ativo: 'Ativo', defensivo: 'Defensivo', item: 'Item', removido: 'Removido',
+  passivo: 'Passivo', ativo: 'Ativo', defesa: 'Defesa', item: 'Item', recurso: 'Recurso', removido: 'Removido',
 };
 
 export { comSinal, ehDerivada, formatarRolagem as rolagem } from '../engine';

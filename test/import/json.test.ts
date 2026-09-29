@@ -134,10 +134,10 @@ describe('importarJson e os textos da aba Batalha', () => {
 describe('importarJson e a escala por nível dos poderes', () => {
   const comEscala = (escala: unknown) => JSON.stringify({ ...ficha, poderes: [{ ...ficha.poderes[0], escala }, ...ficha.poderes.slice(1)] });
 
-  it('a ficha salva antes da escala é migrada: as fontes viram parcelas derivadas e os totais não mudam', () => {
+  it('a ficha salva antes da escala é migrada: as fontes viram parcelas derivadas dos poderes, sem ajuste do mestre', () => {
     const f = importarJson(JSON.stringify(antiga));
-    // A planilha traz a Proteção Divina no nível 1; a ficha embutida, no 2 (confirmado pelo jogador).
-    expect(f).toStrictEqual({ ...structuredClone(ficha), poderes: ficha.poderes.map((p) => (p.id === 'protecao_divina' ? { ...p, nivel: 1, pontosProprios: 1 } : p)), revisaoDados: 0 });
+    // Os níveis vêm da semente do pilar (valor base × pilar + livres), não dos níveis antigos da planilha.
+    expect(f).toStrictEqual({ ...structuredClone(ficha), revisaoDados: 0 });
   });
 
   it('aceita escala completa e a preserva na ida e volta', () => {

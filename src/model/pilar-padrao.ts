@@ -13,18 +13,28 @@ export function limitarNivelPilar(nivel: number): number {
   return Math.max(PILAR_MIN, Math.min(PILAR_MAX, Math.round(nivel)));
 }
 
-/** "Poderes adicionais" do pilar da Justiça: pontos concedidos ao assumir e a cada nível que o pilar sobe. */
-export const PACOTE_JUSTICA: Record<string, number> = {
-  lugan_completo: 2,
-  protecao_divina: 1,
-  campeao_do_combate_divino: 2,
-  o_filho_de_hagashi: 4,
-  lugan_da_batalha: 1,
-  forca_das_montanhas_divinas: 1,
-  golpe_devastador: 1,
-  manipulador_de_tsu_real: 1,
-  fogo_real: 2,
+/**
+ * Semente do pilar da Justiça 3 (docs/pilar-livres-requisitos.md): por poder, o valor base do pilar (pontos a cada nível
+ * do pilar, do pacote "Poderes adicionais" do livro) e os pontos livres (evolução pessoal). Nível = base × pilar + livres.
+ * A Velocidade Divina é de origem livre (fora do pacote) e o Portador da Jikar é item (sem nível).
+ */
+export const SEMENTE_JUSTICA: Record<string, { valorBasePilar: number; pontosLivres: number }> = {
+  lugan_completo: { valorBasePilar: 2, pontosLivres: 0 },
+  protecao_divina: { valorBasePilar: 1, pontosLivres: 1 },
+  campeao_do_combate_divino: { valorBasePilar: 2, pontosLivres: 0 },
+  o_filho_de_hagashi: { valorBasePilar: 4, pontosLivres: 0 },
+  lugan_da_batalha: { valorBasePilar: 1, pontosLivres: 2 },
+  forca_das_montanhas_divinas: { valorBasePilar: 1, pontosLivres: 0 },
+  golpe_devastador: { valorBasePilar: 1, pontosLivres: 0 },
+  manipulador_de_tsu_real: { valorBasePilar: 1, pontosLivres: 0 },
+  fogo_real: { valorBasePilar: 2, pontosLivres: 0 },
+  velocidade_divina: { valorBasePilar: 0, pontosLivres: 2 },
 };
+
+/** "Poderes adicionais" do pilar da Justiça: pontos concedidos ao assumir e a cada nível que o pilar sobe (valor base × nível do pilar). */
+export const PACOTE_JUSTICA: Record<string, number> = Object.fromEntries(
+  Object.entries(SEMENTE_JUSTICA).filter(([, x]) => x.valorBasePilar > 0).map(([id, x]) => [id, x.valorBasePilar]),
+);
 
 const semAcento = (t: string): string => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
@@ -62,7 +72,7 @@ export function textosPilarJustica(): string[] {
 
 /**
  * Pilar de partida: nome e nível dados. O da Justiça traz o pacote, os efeitos e os textos do livro; qualquer outro
- * começa sem pacote (o jogador o monta). `nivelAplicado` = nível, de modo que nenhum ponto de poder muda na criação.
+ * começa sem pacote (o jogador o monta).
  */
 export function pilarPadrao(nome: string, nivel: number = PILAR_NIVEL_PADRAO): Pilar {
   const n = limitarNivelPilar(nivel);
@@ -70,7 +80,6 @@ export function pilarPadrao(nome: string, nivel: number = PILAR_NIVEL_PADRAO): P
   return {
     nome,
     nivel: n,
-    nivelAplicado: n,
     pacotePorNivel: justica ? { ...PACOTE_JUSTICA } : {},
     efeitos: justica ? efeitosPilarJustica() : [],
     textos: justica ? textosPilarJustica() : [],

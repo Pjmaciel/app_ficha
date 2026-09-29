@@ -15,11 +15,8 @@ describe('importarXlsx', () => {
   const ficha = carregar();
 
   it('reproduz exatamente o JSON de referência do Alexsander, depois da migração que semeia as escalas dos poderes', () => {
-    // Diferença documentada: a planilha traz a Proteção Divina no nível 1; a ficha embutida a tem no nível 2
-    // (confirmado pelo jogador, revisão 4), o que muda PV (3404 → 3904), usos (1 → 2) e os efeitos por nível.
+    // Os níveis da planilha (antigos) dão lugar à semente do pilar da Justiça 3: valor base × pilar + pontos livres.
     const esperado = structuredClone(alexsander) as unknown as Ficha;
-    esperado.poderes.find((p) => p.id === 'protecao_divina')!.nivel = 1;
-    esperado.poderes.find((p) => p.id === 'protecao_divina')!.pontosProprios = 1;
     expect(migrarFicha(ficha)).toStrictEqual({ ...esperado, revisaoDados: 0 });
   });
 
@@ -91,7 +88,7 @@ describe('importarXlsx', () => {
       ['Portador da Jikar', null, 'item'],
       ['Campeão do Combate Divino', 3, 'passivo'],
       ['Força das Montanhas Divinas', 1, 'passivo'],
-      ['Proteção Divina', 1, 'defensivo'],
+      ['Proteção Divina', 1, 'defesa'],
       ['O Filho de Hagashi', 4, 'passivo'],
       ['Lugan Completo', 1, 'passivo'],
       ['Manipulador de Tsu Real', 1, 'passivo'],

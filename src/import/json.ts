@@ -11,7 +11,9 @@ const CHAVES_COMBATE: ChaveCombate[] = [
   'bloquear',
   'aparar',
 ];
-const TIPOS_PODER = ['passivo', 'ativo', 'defensivo', 'item', 'removido'];
+// 'defensivo' é o nome antigo de 'defesa': a migração o converte.
+const TIPOS_PODER = ['passivo', 'ativo', 'defesa', 'defensivo', 'item', 'recurso', 'removido'];
+const ORIGENS_PODER = ['pilar', 'livre', 'item', 'manual'];
 const ELEMENTOS = ['fogo', 'agua', 'ar', 'terra', 'luz', 'trevas'];
 
 type Objeto = Record<string, unknown>;
@@ -135,7 +137,7 @@ function exigirIdentidade(identidade: unknown, textos: string[], opcionais: stri
 }
 
 /**
- * Valida o pilar (aspecto do mundo): nome, nível e nível aplicado numéricos, pacote por poder numérico, efeitos
+ * Valida o pilar (aspecto do mundo): nome e nível, valor base do pilar (pacote) por poder numérico, efeitos
  * escaláveis e textos. Ausente é aceito: a migração monta o pilar a partir de `identidade.pilarLuganico` e `pilarNivel`.
  */
 function exigirPilar(pilar: unknown): void {
@@ -144,11 +146,12 @@ function exigirPilar(pilar: unknown): void {
   exigir(pilar.nome === undefined || typeof pilar.nome === 'string', 'pilar.nome deve ser texto.');
   exigir(pilar.nome !== undefined || pilar.nivel !== undefined, 'pilar sem nome nem nível.');
   exigir(pilar.nivel === undefined || ehNumero(pilar.nivel), 'pilar.nivel deve ser numérico.');
+  // `nivelAplicado` (regra antiga) é aceito se numérico e descartado pela migração.
   exigir(pilar.nivelAplicado === undefined || ehNumero(pilar.nivelAplicado), 'pilar.nivelAplicado deve ser numérico.');
   const pacote = pilar.pacotePorNivel;
   exigir(
     pacote === undefined || (ehObjeto(pacote) && Object.values(pacote).every(ehNumero)),
-    'pilar.pacotePorNivel deve ser um objeto de poder para pontos por nível (numéricos).',
+    'pilar.pacotePorNivel deve ser um objeto de poder para valor base do pilar (numérico).',
   );
   exigirEfeitos(pilar.efeitos, 'pilar');
   exigir(
@@ -278,6 +281,10 @@ function validarV2(dados: Objeto): void {
     }
     exigir(p.mostrarNaBatalha === undefined || typeof p.mostrarNaBatalha === 'boolean', `poder ${p.id} com mostrarNaBatalha inválido.`);
     exigir(p.requerPilar === undefined || ehNumero(p.requerPilar), `poder ${p.id} com requerPilar não numérico.`);
+    exigir(p.pontosLivres === undefined || p.pontosLivres === null || ehNumero(p.pontosLivres), `poder ${p.id} com pontosLivres não numérico.`);
+    exigir(p.valorBasePilar === undefined || ehNumero(p.valorBasePilar), `poder ${p.id} com valorBasePilar não numérico.`);
+    exigir(p.origem === undefined || (typeof p.origem === 'string' && ORIGENS_PODER.includes(p.origem)), `poder ${p.id} com origem desconhecida.`);
+    // Campos da regra antiga (nível = próprios + pilar): aceitos se numéricos e convertidos pela migração.
     exigir(p.pontosProprios === undefined || p.pontosProprios === null || ehNumero(p.pontosProprios), `poder ${p.id} com pontosProprios não numérico.`);
     exigir(p.pontosDoPilar === undefined || ehNumero(p.pontosDoPilar), `poder ${p.id} com pontosDoPilar não numérico.`);
     if (p.escala !== undefined) exigirEscala(p.escala, p.id);

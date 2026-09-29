@@ -32,15 +32,16 @@ describe('ficha do Alexsander', () => {
     });
   });
 
-  it('as fontes manuais e as parcelas derivadas dos poderes somam a coluna E da planilha', () => {
+  it('as fontes manuais (só "Outros", sem ajuste do mestre) e as parcelas derivadas dos poderes somam os bônus dos níveis finais', () => {
+    // Antes, a soma reproduzia a coluna E da planilha (470/280/280/280/330/330/470), calculada com os níveis antigos.
     const esperado: Record<ChaveCombate, number> = {
-      ataqueArmaBranca: 470,
-      ataqueMagico: 280,
-      ataqueLuta: 280,
-      ataqueArmaFogo: 280,
-      esquivar: 330,
-      bloquear: 330,
-      aparar: 470,
+      ataqueArmaBranca: 970,
+      ataqueMagico: 640,
+      ataqueLuta: 500,
+      ataqueArmaFogo: 500,
+      esquivar: 550,
+      bloquear: 550,
+      aparar: 970,
     };
     for (const [chave, soma] of Object.entries(esperado)) {
       expect(somaFontes(ficha.combate[chave as ChaveCombate].fontes) + somaFontes(fontesDerivadasCombate(ficha, chave as ChaveCombate))).toBe(soma);
@@ -56,9 +57,27 @@ describe('ficha do Alexsander', () => {
     expect(ficha.combate.esquivar.fieisPor).toBe(100);
     expect(ficha.combate.ataqueMagico.fieisPor).toBeNull();
     expect(somaFontes(ficha.dano.dadosExtras)).toBe(1);
-    expect(somaFontes(ficha.dano.fixos) + somaFontes(fontesDerivadasDano(ficha))).toBe(120);
+    expect(somaFontes(ficha.dano.fixos) + somaFontes(fontesDerivadasDano(ficha))).toBe(280);
     expect(ficha.dano.fieisPor).toBe(400);
     expect(ficha.fieis).toBe(0);
+  });
+
+  it('não há fonte manual "Ajuste do mestre"; "Outros" (120/70/120) continua nos bônus passivos', () => {
+    const todas = [
+      ...Object.values(ficha.combate).flatMap((e) => e.fontes),
+      ...ficha.dano.fixos,
+      ...ficha.pvExtras,
+      ...Object.values(ficha.atributos).flatMap((a) => a.extras),
+    ];
+    expect(todas.some((x) => x.nome.startsWith('Ajuste do mestre'))).toBe(false);
+    const outros = (c: ChaveCombate) => ficha.combate[c].fontes.filter((x) => x.nome === 'Outros').map((x) => x.valor);
+    expect(outros('ataqueArmaBranca')).toEqual([120]);
+    expect(outros('aparar')).toEqual([120]);
+    expect(outros('ataqueLuta')).toEqual([70]);
+    expect(outros('ataqueArmaFogo')).toEqual([70]);
+    expect(outros('esquivar')).toEqual([120]);
+    expect(outros('bloquear')).toEqual([120]);
+    expect(outros('ataqueMagico')).toEqual([]);
   });
 
   it('não há poder removido na lista inicial', () => {

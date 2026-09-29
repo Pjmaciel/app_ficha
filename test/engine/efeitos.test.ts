@@ -28,11 +28,10 @@ const poder = (f: Ficha, id: string): Poder => {
   return p;
 };
 const efeito = (f: Ficha, poderId: string, id: string): number | null => valorDeEfeito(f, poderId, id);
-/** A ficha com os valores da planilha: Proteção Divina no nível 1. */
+/** A ficha com a Proteção Divina no nível 1 (o motor lê o nível derivado; aqui ele é fixado à mão). */
 const nivel1 = (): Ficha => {
   const f = clonar();
   poder(f, 'protecao_divina').nivel = 1;
-  poder(f, 'protecao_divina').pontosProprios = 1;
   return f;
 };
 
@@ -50,16 +49,16 @@ describe('efeitos escaláveis', () => {
     expect(valores(4)).toEqual([4, 2, 200, 20, 400, 600]);
   });
 
-  it('o ajuste fixo do Lugan Completo preserva os 200 da planilha e a ação extra vem a cada 3 níveis', () => {
+  it('o Lugan Completo segue o coeficiente do livro por ponto (sem ajuste fixo) e a ação extra vem a cada 3 níveis', () => {
     const f = clonar();
     const lc = poder(f, 'lugan_completo');
-    expect(efeito(f, 'lugan_completo', 'anti_mental')).toBe(200);
-    expect(efeito(f, 'lugan_completo', 'voo_kmh')).toBe(280);
-    expect(efeito(f, 'lugan_completo', 'acao_extra')).toBe(0);
+    expect(efeito(f, 'lugan_completo', 'anti_mental')).toBe(600);
+    expect(efeito(f, 'lugan_completo', 'voo_kmh')).toBe(840);
+    expect(efeito(f, 'lugan_completo', 'acao_extra')).toBe(2);
     lc.nivel = 3;
-    expect(efeito(f, 'lugan_completo', 'anti_mental')).toBe(400);
+    expect(efeito(f, 'lugan_completo', 'anti_mental')).toBe(300);
     expect(efeito(f, 'lugan_completo', 'acao_extra')).toBe(1);
-    expect(efeito(f, 'lugan_completo', 'voo_kmh')).toBe(560);
+    expect(efeito(f, 'lugan_completo', 'voo_kmh')).toBe(420);
   });
 
   it('as parcelas existentes são efeitos de ids reservados, vindos dos mesmos coeficientes', () => {
@@ -68,12 +67,12 @@ describe('efeitos escaláveis', () => {
     expect(ids).toEqual([
       'ataque_armaBranca', 'ataque_magico', 'ataque_luta', 'ataque_armaFogo', 'defesa_esquivar', 'defesa_bloquear', 'defesa_aparar', 'dano',
     ]);
-    expect(efeito(f, 'lugan_da_batalha', 'ataque_armaBranca')).toBe(150);
-    expect(efeito(f, 'lugan_da_batalha', 'dano')).toBe(60);
-    expect(efeito(f, 'protecao_divina', 'pv_extra')).toBe(1000);
-    expect(efeito(f, 'protecao_divina', 'usos')).toBe(2);
-    expect(efeito(f, 'forca_das_montanhas_divinas', 'atributo_forca')).toBe(60);
-    expect(efeito(f, 'o_filho_de_hagashi', 'fieis')).toBe(32000);
+    expect(efeito(f, 'lugan_da_batalha', 'ataque_armaBranca')).toBe(250);
+    expect(efeito(f, 'lugan_da_batalha', 'dano')).toBe(100);
+    expect(efeito(f, 'protecao_divina', 'pv_extra')).toBe(2000);
+    expect(efeito(f, 'protecao_divina', 'usos')).toBe(4);
+    expect(efeito(f, 'forca_das_montanhas_divinas', 'atributo_forca')).toBe(180);
+    expect(efeito(f, 'o_filho_de_hagashi', 'fieis')).toBe(96000);
     expect(efeito(f, 'golpe_devastador', 'dados_ataque')).toBe(3);
     expect(idEfeitoCombate('ataqueArmaBranca')).toBe('ataque_armaBranca');
     expect(idEfeitoCombate('aparar')).toBe('defesa_aparar');
@@ -82,18 +81,18 @@ describe('efeitos escaláveis', () => {
   it('um id reservado repetido em efeitos não cria segunda fonte: vale o coeficiente do campo', () => {
     const f = clonar();
     poder(f, 'protecao_divina').escala!.efeitos!.push({ id: 'pv_extra', rotulo: 'Duplicado', porPonto: 9999 });
-    expect(efeito(f, 'protecao_divina', 'pv_extra')).toBe(1000);
-    expect(pvTotal(f)).toBe(3904);
+    expect(efeito(f, 'protecao_divina', 'pv_extra')).toBe(2000);
+    expect(pvTotal(f)).toBe(4904);
   });
 
   it('as sementes do livro: Velocidade Divina, Golpe Devastador, Filho de Hagashi, Força das Montanhas e Campeão', () => {
     const f = clonar();
     expect(efeito(f, 'velocidade_divina', 'velocidade_kmh')).toBe(440);
     expect(efeito(f, 'golpe_devastador', 'pressao_km2')).toBe(24);
-    expect(efeito(f, 'o_filho_de_hagashi', 'protecao')).toBe(1400);
-    expect(efeito(f, 'forca_das_montanhas_divinas', 'raio_km2')).toBe(2);
-    expect(efeito(f, 'campeao_do_combate_divino', 'pressao_km2')).toBe(6);
-    expect(efeito(f, 'fogo_real', 'dano_divinos')).toBe(200);
+    expect(efeito(f, 'o_filho_de_hagashi', 'protecao')).toBe(4200);
+    expect(efeito(f, 'forca_das_montanhas_divinas', 'raio_km2')).toBe(6);
+    expect(efeito(f, 'campeao_do_combate_divino', 'pressao_km2')).toBe(12);
+    expect(efeito(f, 'fogo_real', 'dano_divinos')).toBe(300);
   });
 
   it('poder removido ou sem nível não tem efeito ativo', () => {
@@ -118,24 +117,24 @@ describe('subir a Proteção Divina de 1 para 2 muda tudo junto', () => {
       .toEqual([3904, 2, 300, 10, 200]);
   });
 
-  it('a reação de efeito mental soma 350 no nível 1 e 500 (200 + 300) no nível 2', () => {
+  it('a reação de efeito mental soma 750 (600 + 150) com a Proteção Divina 1 e 900 (600 + 300) com ela no 2', () => {
     const reacaoMental = (f: Ficha): string => resumoBatalha(f, novaSessao(f)).reacoes.find((r) => r.situacao === 'Efeito mental divino')!.resposta;
     const f = nivel1();
-    expect(reacaoMental(f)).toBe('Somar o bônus de Lugan Completo (+200) e de Proteção Divina (+150), total +350.');
+    expect(reacaoMental(f)).toBe('Somar o bônus de Lugan Completo (+600) e de Proteção Divina (+150), total +750.');
     poder(f, 'protecao_divina').nivel = 2;
-    expect(reacaoMental(f)).toBe('Somar o bônus de Lugan Completo (+200) e de Proteção Divina (+300), total +500.');
-    expect(resolverTexto(f, '{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}')).toBe('500');
+    expect(reacaoMental(f)).toBe('Somar o bônus de Lugan Completo (+600) e de Proteção Divina (+300), total +900.');
+    expect(resolverTexto(f, '{soma:lugan_completo.anti_mental+protecao_divina.anti_mental}')).toBe('900');
   });
 
   it('reações, lembretes, ações e descrições acompanham o poder', () => {
     const f = clonar();
     const antes = resumoBatalha(f, novaSessao(f));
-    expect(antes.lembretes).toContain('Proteção Divina: 2 rodada(s) por dia de imunidade.');
+    expect(antes.lembretes).toContain('Proteção Divina: 4 rodada(s) por dia de imunidade.');
     expect(antes.lembretes).toContain('Golpe Devastador: 3 ponto(s) (usos por dia).');
-    expect(antes.reacoes.find((r) => r.situacao === 'Dano absurdo ou divino')?.resposta).toBe('Proteção Divina: imune por 2 rodada(s) por dia.');
-    expect(antes.reacoes.find((r) => r.situacao === 'Área contra aliados ou cenário')?.resposta).toContain('absorve 200 de dano em 10 km²');
+    expect(antes.reacoes.find((r) => r.situacao === 'Dano absurdo ou divino')?.resposta).toBe('Proteção Divina: imune por 4 rodada(s) por dia.');
+    expect(antes.reacoes.find((r) => r.situacao === 'Área contra aliados ou cenário')?.resposta).toContain('absorve 200 de dano em 20 km²');
     expect(antes.acoes.find((a) => a.id === 'fogo_real')).toMatchObject({
-      rolagem: '400 de dano por rodada em 2 km²', notas: 'Contra divinos, ataques diretos recebem +200 de dano.',
+      rolagem: '400 de dano por rodada em 6 km²', notas: 'Contra divinos, ataques diretos recebem +300 de dano.',
     });
     poder(f, 'golpe_devastador').nivel = 5;
     poder(f, 'fogo_real').nivel = 3;
@@ -143,9 +142,9 @@ describe('subir a Proteção Divina de 1 para 2 muda tudo junto', () => {
     const depois = resumoBatalha(f, novaSessao(f));
     expect(depois.lembretes).toContain('Golpe Devastador: 5 ponto(s) (usos por dia).');
     expect(depois.acoes.find((a) => a.id === 'fogo_real')).toMatchObject({
-      rolagem: '400 de dano por rodada em 3 km²', notas: 'Contra divinos, ataques diretos recebem +250 de dano.',
+      rolagem: '400 de dano por rodada em 3 km²', notas: 'Contra divinos, ataques diretos recebem +150 de dano.',
     });
-    expect(depois.protecoes.find((p) => p.id === 'protecao_divina')?.descricao).toBe('Protege 200 criaturas em 10 km².');
+    expect(depois.protecoes.find((p) => p.id === 'protecao_divina')?.descricao).toBe('Protege 400 criaturas em 20 km².');
   });
 });
 
@@ -153,16 +152,16 @@ describe('resolverTexto', () => {
   const f = clonar();
 
   it('resolve efeito, nível, valor por ponto, fixo e soma', () => {
-    expect(resolverTexto(f, '{poder.protecao_divina.nivel}')).toBe('2');
-    expect(resolverTexto(f, '{poder.protecao_divina.raio_km2}')).toBe('10');
+    expect(resolverTexto(f, '{poder.protecao_divina.nivel}')).toBe('4');
+    expect(resolverTexto(f, '{poder.protecao_divina.raio_km2}')).toBe('20');
     expect(resolverTexto(f, '{poder.protecao_divina.raio_km2.porPonto}')).toBe('5');
-    expect(resolverTexto(f, '{poder.lugan_completo.anti_mental.fixo}')).toBe('100');
-    expect(resolverTexto(f, '{soma:protecao_divina.criaturas + lugan_completo.anti_mental}')).toBe('400');
-    expect(resolverTexto(f, '{soma:poder.protecao_divina.raio_km2+poder.fogo_real.area_km2}')).toBe('12');
+    expect(resolverTexto(f, '{poder.protecao_divina.absorcao_area.fixo}')).toBe('200');
+    expect(resolverTexto(f, '{soma:protecao_divina.criaturas + lugan_completo.anti_mental}')).toBe('1.000');
+    expect(resolverTexto(f, '{soma:poder.protecao_divina.raio_km2+poder.fogo_real.area_km2}')).toBe('26');
   });
 
   it('formata milhares em português', () => {
-    expect(resolverTexto(f, '{poder.o_filho_de_hagashi.fieis} fiéis')).toBe('32.000 fiéis');
+    expect(resolverTexto(f, '{poder.o_filho_de_hagashi.fieis} fiéis')).toBe('96.000 fiéis');
   });
 
   it('deixa o texto sem marcador como está e não toca em chaves que não são marcadores vivos', () => {
@@ -171,15 +170,15 @@ describe('resolverTexto', () => {
 
   it('marcador de poder ou efeito inexistente fica visível e é apontado', () => {
     const texto = 'A {poder.nao_existe.x} e {poder.protecao_divina.nao_existe} e {soma:protecao_divina.raio_km2+fogo_real.zzz} e {poder.protecao_divina.raio_km2}';
-    expect(resolverTexto(f, texto)).toBe('A {poder.nao_existe.x} e {poder.protecao_divina.nao_existe} e {soma:protecao_divina.raio_km2+fogo_real.zzz} e 10');
+    expect(resolverTexto(f, texto)).toBe('A {poder.nao_existe.x} e {poder.protecao_divina.nao_existe} e {soma:protecao_divina.raio_km2+fogo_real.zzz} e 20');
     expect(marcadoresInvalidos(f, texto)).toEqual(['{poder.nao_existe.x}', '{poder.protecao_divina.nao_existe}', '{soma:protecao_divina.raio_km2+fogo_real.zzz}']);
     expect(marcadoresInvalidos(f, 'Nada {x}')).toEqual([]);
   });
 
   it('lista os marcadores disponíveis com o valor atual', () => {
     const lista = marcadoresDisponiveis(f);
-    expect(lista).toContainEqual({ marcador: '{poder.protecao_divina.anti_mental}', rotulo: 'Proteção Divina: Anula efeitos mentais divinos', valor: 300 });
-    expect(lista).toContainEqual({ marcador: '{poder.protecao_divina.nivel}', rotulo: 'Proteção Divina: nível', valor: 2 });
+    expect(lista).toContainEqual({ marcador: '{poder.protecao_divina.anti_mental}', rotulo: 'Proteção Divina: Anula efeitos mentais divinos', valor: 600 });
+    expect(lista).toContainEqual({ marcador: '{poder.protecao_divina.nivel}', rotulo: 'Proteção Divina: nível', valor: 4 });
     const g = clonar();
     poder(g, 'protecao_divina').tipo = 'removido';
     expect(marcadoresDisponiveis(g).some((m) => m.marcador.startsWith('{poder.protecao_divina'))).toBe(false);
@@ -199,6 +198,7 @@ describe('patamares e o card de absorção', () => {
 
   it('nível 2: nenhum atingido e o próximo é o nível 3 (Tsu real)', () => {
     const f = clonar();
+    poder(f, 'protecao_divina').nivel = 2;
     const { atingidos, proximo } = patamaresDoPoder(f, poder(f, 'protecao_divina'));
     expect(atingidos).toEqual([]);
     expect(proximo).toMatchObject({ nivel: 3, atingido: false });
@@ -207,15 +207,24 @@ describe('patamares e o card de absorção', () => {
     expect(c.resumo).toContain('próximo patamar: nível 3, passa a reduzir a Tsu real');
   });
 
-  it('o card traz os efeitos no nível atual: 2 rodadas, +1000 PV, absorve 200, 10 km², 200 criaturas e +300 contra mentais', () => {
+  it('nível 4 (o da ficha): patamar 3 atingido e o próximo é o nível 6 (1d+1)', () => {
+    const f = clonar();
+    const { atingidos, proximo } = patamaresDoPoder(f, poder(f, 'protecao_divina'));
+    expect(atingidos.map((x) => x.nivel)).toEqual([3]);
+    expect(proximo).toMatchObject({ nivel: 6, atingido: false });
+    expect(card(f).resumo).toContain('nível 3: passa a reduzir a Tsu real: rola 1d para diminuir o dano');
+    expect(card(f).resumo).toContain('próximo patamar: nível 6, reduz a Tsu real com 1d+1');
+  });
+
+  it('o card traz os efeitos no nível atual: 4 rodadas, +2000 PV, absorve 200, 20 km², 400 criaturas e +600 contra mentais', () => {
     const textos = card(clonar()).efeitos.map((e) => e.texto);
-    expect(textos).toContain('Imunidade total: 2 rodadas por dia');
-    expect(textos).toContain('PV extras: +1000 PV');
+    expect(textos).toContain('Imunidade total: 4 rodadas por dia');
+    expect(textos).toContain('PV extras: +2000 PV');
     expect(textos).toContain('Absorção de dano no cenário e nos envolvidos: 200 de dano');
-    expect(textos).toContain('Raio da proteção: 10 km²');
-    expect(textos).toContain('Criaturas protegidas: 200 criaturas');
-    expect(textos).toContain('Anula efeitos mentais divinos: 300');
-    expect(textos).toContain('Rolagem de vigor lugânico: 1');
+    expect(textos).toContain('Raio da proteção: 20 km²');
+    expect(textos).toContain('Criaturas protegidas: 400 criaturas');
+    expect(textos).toContain('Anula efeitos mentais divinos: 600');
+    expect(textos).toContain('Rolagem de vigor lugânico: 2');
     expect(textos.some((t) => t.startsWith('Ataque') || t.startsWith('Dano'))).toBe(false);
   });
 
@@ -252,7 +261,7 @@ describe('patamares e o card de absorção', () => {
   it('a lista de efeitos editada pelo jogador aparece no card', () => {
     const f = clonar();
     poder(f, 'protecao_divina').escala!.efeitos!.push({ id: 'novo', rotulo: 'Escudos', porPonto: 3, unidade: 'escudos' });
-    expect(card(f).efeitos.map((e) => e.texto)).toContain('Escudos: 6 escudos');
+    expect(card(f).efeitos.map((e) => e.texto)).toContain('Escudos: 12 escudos');
     poder(f, 'protecao_divina').escala!.efeitos = [];
     expect(card(f).efeitos.map((e) => e.id)).toEqual(['pv_extra']);
   });
@@ -275,7 +284,8 @@ describe('pilar', () => {
     const { pilar: _, ...semPilar } = clonar();
     const legado = { ...semPilar, identidade: { ...clonar().identidade, pilarLuganico: 'Justiça' } };
     expect(migrarFicha(legado).pilar.nivel).toBe(3);
-    expect(migrarFicha(structuredClone(antiga)).pilar).toMatchObject({ nome: 'Justiça', nivel: 3, nivelAplicado: 3 });
+    expect(migrarFicha(structuredClone(antiga)).pilar).toMatchObject({ nome: 'Justiça', nivel: 3 });
+    expect(migrarFicha(structuredClone(antiga)).pilar).not.toHaveProperty('nivelAplicado');
     const f = clonar();
     f.pilar.nivel = 5;
     expect(migrarFicha(f).pilar.nivel).toBe(5);
@@ -344,8 +354,8 @@ describe('migração dos efeitos e dos textos vivos', () => {
     expect(migrarFicha(m)).toStrictEqual(m);
   });
 
-  it('a ficha salva antes da escala termina igual à embutida (com a Proteção Divina no nível da planilha)', () => {
-    expect(migrarFicha(structuredClone(antiga))).toStrictEqual({ ...nivel1(), revisaoDados: 0 });
+  it('a ficha salva antes da escala termina igual à embutida (níveis da semente do pilar)', () => {
+    expect(migrarFicha(structuredClone(antiga))).toStrictEqual({ ...clonar(), revisaoDados: 0 });
   });
 });
 

@@ -1,7 +1,7 @@
 // Aba Batalha: tudo o que se consulta durante a luta, em uma tela só e com valores prontos.
 // Ordem: Minha rodada, Ataques, Defesas, Absorções e proteções, Quando for atacado e Lembretes.
 // A estrutura (quantos cartões) vem da ficha ao abrir a aba; os valores são refeitos a cada mudança.
-import { poderUsavel, resumoBatalha, usoDoPoder, usosPorDiaDoPoder, type ResumoBatalha } from '../../engine';
+import { comSinal, poderUsavel, resumoBatalha, usoDoPoder, usosPorDiaDoPoder, type ResumoBatalha } from '../../engine';
 import type { ChaveCombate, Poder } from '../../model/types';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, definirValor, entradaNumero, h, inteiro, limpar } from '../dom';
@@ -43,6 +43,7 @@ function blocoPv(ctx: Contexto): HTMLElement {
   campoPv.addEventListener('change', () => definirValor(campoPv, String(ctx.sessao().pvAtual)));
   const valor = entradaNumero(10, () => {}, { min: 0 });
   const total = h('span', {});
+  const composicaoPv = h('p', { class: 'detalhe composicao-pv' });
   const preenchimento = h('div', { class: 'preenchimento' });
   const barra = h('div', { class: 'barra pv', role: 'progressbar', 'aria-label': 'Pontos de vida', 'aria-valuemin': 0 }, preenchimento);
   ctx.ligar(() => {
@@ -50,6 +51,8 @@ function blocoPv(ctx: Contexto): HTMLElement {
     const atual = ctx.sessao().pvAtual;
     definirValor(campoPv, String(atual));
     definirTexto(total, ` / ${max}`);
+    const pv = resumoBatalha(ctx.ficha(), ctx.sessao()).pv;
+    definirTexto(composicaoPv, `PV máximo ${pv.total}: base ${pv.base} + Proteção Divina ${pv.protecaoDivina}${pv.outros !== 0 ? ` + outros ${pv.outros}` : ''}`);
     preenchimento.style.width = `${max > 0 ? Math.max(0, Math.min(100, (atual / max) * 100)) : 0}%`;
     barra.setAttribute('aria-valuemax', String(max));
     barra.setAttribute('aria-valuenow', String(atual));
@@ -60,6 +63,7 @@ function blocoPv(ctx: Contexto): HTMLElement {
       h('span', { class: 'rotulo' }, 'PV atual'),
       h('span', { class: 'numeros' }, campo('PV atual', campoPv, true), total)),
     barra,
+    composicaoPv,
     h('div', { class: 'controles' },
       h('button', { type: 'button', class: 'perigo grande', onclick: () => aplicarPv(ctx, -quantia()) }, 'Dano'),
       campo('Valor de dano ou cura', valor, true),
@@ -127,9 +131,12 @@ function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTM
   const atual = () => f().golpes[indice];
   const golpe = () => r().golpes[indice];
   const pressao = h('p', { class: 'detalhe' });
+  const composicao = h('p', { class: 'detalhe composicao' });
   ctx.ligar(() => {
     const g = golpe();
     if (!g) return;
+    definirTexto(composicao, g.composicao ?? '');
+    composicao.hidden = g.composicao === null;
     const partes = [
       g.pontos !== null ? `${g.pontos} ${g.pontos === 1 ? 'ponto' : 'pontos'}` : '',
       g.pressaoKm2 !== null ? `pressão de ${kmQuadrados(g.pressaoKm2)}` : '',
@@ -139,6 +146,7 @@ function cartaoGolpe(ctx: Contexto, r: () => ResumoBatalha, indice: number): HTM
   const nome = atual().nome;
   return h('section', { class: 'cartao golpe', 'aria-label': `Golpe especial ${nome}` },
     h('h3', {}, nome),
+    composicao,
     h('div', { class: 'grade grade-larga' },
       cartaoValor(ctx, {
         chave: `bat-golpe-${atual().id}-ataque`, titulo: 'Ataque',
@@ -205,6 +213,7 @@ function cartaoProtecao(ctx: Contexto, r: () => ResumoBatalha, id: string, temUs
   const efeitos = h('ul', { class: 'efeitos-protecao', 'aria-label': 'Efeitos no nível atual' });
   const patamares = h('ul', { class: 'patamares', 'aria-label': 'Patamares' });
   const proximo = h('p', { class: 'proximo-patamar' });
+  const composicao = h('p', { class: 'detalhe composicao' });
   const descricao = h('p', { class: 'descricao' });
   const bloco = h('details', { class: 'descricao-poder' }, h('summary', {}, 'Descrição do poder'), descricao);
   ctx.ligar(() => {
@@ -213,6 +222,7 @@ function cartaoProtecao(ctx: Contexto, r: () => ResumoBatalha, id: string, temUs
     limpar(titulo);
     titulo.append(p.nome || 'Sem nome');
     if (p.nivel !== null) titulo.append(h('span', { class: 'detalhe' }, ` · nível ${p.nivel}`));
+    definirTexto(composicao, p.composicao);
     limpar(efeitos);
     for (const e of p.efeitos) efeitos.append(h('li', {}, e.texto));
     efeitos.hidden = p.efeitos.length === 0;
@@ -223,7 +233,39 @@ function cartaoProtecao(ctx: Contexto, r: () => ResumoBatalha, id: string, temUs
     proximo.hidden = p.proximoPatamar === null;
     definirTexto(descricao, p.descricao || 'Sem descrição.');
   });
-  return h('article', { class: 'cartao protecao' }, titulo, efeitos, patamares, proximo, bloco, temUso ? controleUso(ctx, id) : null);
+  return h('article', { class: 'cartao protecao' }, titulo, composicao, efeitos, patamares, proximo, bloco, temUso ? controleUso(ctx, id) : null);
+}
+
+/**
+ * Card da Proteção Divina: nível calculado (com a composição pilar + livres), imunidade, PV extra, absorção em área,
+ * criaturas protegidas, bônus contra efeito mental divino e a redução de Tsu real (a partir do patamar do nível 3).
+ */
+function cartaoProtecaoDivina(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
+  const titulo = h('h3', {});
+  const composicao = h('p', { class: 'detalhe composicao' });
+  const lista = h('ul', { class: 'efeitos-protecao', 'aria-label': 'Efeitos da Proteção Divina' });
+  ctx.ligar(() => {
+    const d = r().protecaoDivina;
+    if (!d) return;
+    definirTexto(titulo, `Proteção Divina · nível ${d.nivel ?? 0}`);
+    definirTexto(composicao, d.composicao);
+    const tsu = d.reduzTsuReal
+      ? `Redução de Tsu real: sim, com ${d.reducaoTsuReal ?? 'dado'}`
+        + (d.proximaReducaoTsuReal ? ` (próximo: nível ${d.proximaReducaoTsuReal.nivel}, ${d.proximaReducaoTsuReal.dado ?? 'melhora'})` : '')
+      : `Redução de Tsu real: ainda não${d.proximaReducaoTsuReal ? ` (a partir do nível ${d.proximaReducaoTsuReal.nivel}, ${d.proximaReducaoTsuReal.dado ?? 'dado'})` : ''}`;
+    const linhas = [
+      `Imunidade total: ${d.imunidadeRodadas} ${d.imunidadeRodadas === 1 ? 'rodada' : 'rodadas'} por dia`,
+      `PV extra: ${comSinal(d.pvExtra)}`,
+      `Absorção em área: ${d.absorcaoArea.toLocaleString('pt-BR')} de dano em ${kmQuadrados(d.raioKm2)}`,
+      `Criaturas protegidas: ${d.criaturasProtegidas.toLocaleString('pt-BR')}`,
+      `Bônus contra efeito mental divino: ${comSinal(d.antiMental)}`,
+      tsu,
+    ];
+    limpar(lista);
+    for (const l of linhas) lista.append(h('li', {}, l));
+  });
+  return h('article', { class: 'cartao protecao protecao-divina', 'data-poder': 'protecao_divina' },
+    titulo, composicao, lista, r().protecaoDivina?.usosPorDia !== null ? controleUso(ctx, 'protecao_divina') : null);
 }
 
 function secaoProtecoes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
@@ -232,7 +274,9 @@ function secaoProtecoes(ctx: Contexto, r: () => ResumoBatalha): HTMLElement {
     h('h2', {}, 'Absorções e proteções'),
     protecoes.length === 0
       ? h('p', { class: 'vazio' }, 'Nenhum poder marcado para aparecer aqui. Marque "Mostrar na aba Batalha" na aba Poderes.')
-      : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) => cartaoProtecao(ctx, r, p.id, p.uso !== null))));
+      : h('div', { class: 'grade grade-larga' }, ...protecoes.map((p) => (p.id === 'protecao_divina' && r().protecaoDivina
+        ? cartaoProtecaoDivina(ctx, r)
+        : cartaoProtecao(ctx, r, p.id, p.uso !== null)))));
 }
 
 /**

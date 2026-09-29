@@ -49,13 +49,13 @@ describe('baseAtributo e totalAtributo', () => {
   });
 
   it.each<[AtributoId, number]>([
-    ['forca', 322],
+    ['forca', 442],
     ['agilidade', 272],
     ['reflexos', 207],
     ['fortitude', 242],
     ['distancia', 152],
     ['mental', 165],
-  ])('atributo %s da ficha tem total %i', (id, esperado) => {
+  ])('atributo %s da ficha tem total %i (Força 47 + 215 + 60 × 3 da Força das Montanhas Divinas)', (id, esperado) => {
     expect(totalAtributoFicha(ficha, id)).toBe(esperado);
   });
 });
@@ -119,7 +119,7 @@ describe('diferencaAtributos', () => {
     });
   });
 
-  it('extras não entram na comparação (Força total 322 não pesa)', () => {
+  it('extras não entram na comparação (Força total 442 não pesa)', () => {
     const f = clonar();
     f.atributos.forca.extras = [{ nome: 'X', valor: 1000 }];
     expect(diferencaAtributos(f).maior).toBe('agilidade');
@@ -155,7 +155,7 @@ describe('totalPericia', () => {
   it('atinge os valores de destaque do contrato v2', () => {
     expect(totalPericia(ficha, 'atuacao')).toBe(301); // mental
     expect(totalPericia(ficha, 'furtividade')).toBe(408); // agilidade
-    expect(totalPericia(ficha, 'intimidar')).toBe(458);
+    expect(totalPericia(ficha, 'intimidar')).toBe(578);
     expect(totalPericia(ficha, 'perceber')).toBe(501);
     expect(totalPericia(ficha, 'manipular_tsu')).toBe(501);
     expect(totalPericia(ficha, 'espada')).toBe(608);
@@ -164,13 +164,13 @@ describe('totalPericia', () => {
     expect(totalPericia(ficha, 'arma_de_fogo')).toBe(408);
   });
 
-  it('inclui as parcelas derivadas e os extras manuais do atributo (Força 322 em intimidar)', () => {
+  it('inclui as parcelas derivadas e os extras manuais do atributo (Força 442 em intimidar)', () => {
     const f = clonar();
-    expect(totalPericia(f, 'intimidar')).toBe(458);
+    expect(totalPericia(f, 'intimidar')).toBe(578);
     f.atributos.forca.extras.push({ nome: 'Poção', valor: 5 });
-    expect(totalPericia(f, 'intimidar')).toBe(458 + 5);
+    expect(totalPericia(f, 'intimidar')).toBe(578 + 5);
     delete f.poderes.find((p) => p.id === 'forca_das_montanhas_divinas')!.escala;
-    expect(totalPericia(f, 'intimidar')).toBe(458 + 5 - 60);
+    expect(totalPericia(f, 'intimidar')).toBe(578 + 5 - 180);
   });
 
   // Totais por grupo, conforme atributo governante e inicial (planilha correta, nível 41).
@@ -196,7 +196,7 @@ describe('totalPericia', () => {
     },
     manipulacao: {
       blefar: 301, lideranca: 301, trato_social: 301, seducao: 301,
-      trato_com_animais: 301, intimidar: 458,
+      trato_com_animais: 301, intimidar: 578,
     },
     sobrevivencia: {
       escalar_sob: 408, armadilha_sob: 408, meteorologia_sob: 301, rastrear_sob: 301,
@@ -228,8 +228,8 @@ describe('pvBase e pvTotal', () => {
     expect(pvBase(ficha)).toBe(2904);
   });
 
-  it('total soma os PV extras (Proteção Divina nível 2: +1000 = 3904; a planilha traz o nível 1, com 3404)', () => {
-    expect(pvTotal(ficha)).toBe(3904);
+  it('total soma os PV extras (Proteção Divina nível 4: 500 × 4 = 2000; 2904 + 2000 = 4904)', () => {
+    expect(pvTotal(ficha)).toBe(4904);
   });
 
   it('acompanha alterações de fortitude e de PV extras', () => {
@@ -237,7 +237,7 @@ describe('pvBase e pvTotal', () => {
     f.atributos.fortitude.extras = [{ nome: 'X', valor: 2 }];
     f.pvExtras.push({ nome: 'Y', valor: 100 });
     expect(pvBase(f)).toBe(12 * 244);
-    expect(pvTotal(f)).toBe(12 * 244 + 1100);
+    expect(pvTotal(f)).toBe(12 * 244 + 2000 + 100);
   });
 });
 
@@ -256,13 +256,15 @@ describe('dadosPorNivel', () => {
 
 describe('combate', () => {
   const oraculo: Record<ChaveCombate, number> = {
-    ataqueArmaBranca: 1078,
-    ataqueMagico: 781,
-    ataqueLuta: 688,
-    ataqueArmaFogo: 688,
-    esquivar: 540,
-    bloquear: 941,
-    aparar: 1094,
+    // Soma das escalas do livro nos níveis finais (Lugan da Batalha 5, Campeão 6, Lugan Completo 6, Manipulador 3) mais
+    // a perícia ou o atributo e a fonte manual "Outros".
+    ataqueArmaBranca: 1578,
+    ataqueMagico: 1141,
+    ataqueLuta: 908,
+    ataqueArmaFogo: 908,
+    esquivar: 760,
+    bloquear: 1161,
+    aparar: 1594,
   };
 
   it.each(Object.entries(oraculo))('%s tem total %i', (chave, total) => {
@@ -276,7 +278,7 @@ describe('combate', () => {
 
   it('a composição do ataque com arma branca lista a perícia, as parcelas dos poderes e as fontes manuais', () => {
     const { composicao } = combate(ficha, 'ataqueArmaBranca');
-    expect(composicao.map((x) => x.valor)).toEqual([608, 150, 210, 30, 120, -70, 30]);
+    expect(composicao.map((x) => x.valor)).toEqual([608, 250, 420, 180, 120]);
     expect(composicao.map((x) => x.nome)).toContain('Lugan da Batalha');
   });
 
@@ -300,44 +302,44 @@ describe('combate', () => {
     f.fieis = 450;
     const ataque = combate(f, 'ataqueArmaBranca');
     expect(ataque.fieisBonus).toBe(2);
-    expect(ataque.total).toBe(1078 + 2);
+    expect(ataque.total).toBe(1578 + 2);
     const esquiva = combate(f, 'esquivar');
     expect(esquiva.fieisBonus).toBe(4);
-    expect(esquiva.total).toBe(540 + 4);
+    expect(esquiva.total).toBe(760 + 4);
     expect(esquiva.composicao.reduce((s, x) => s + x.valor, 0)).toBe(esquiva.total);
   });
 
   it('fieisPor nulo ignora os fiéis', () => {
     const f = clonar();
     f.fieis = 32000;
-    expect(combate(f, 'ataqueMagico')).toMatchObject({ fieisBonus: 0, total: 781 });
+    expect(combate(f, 'ataqueMagico')).toMatchObject({ fieisBonus: 0, total: 1141 });
   });
 
   it('usa a fonte de cada chave individualmente', () => {
     const f = clonar();
     f.combate.esquivar.fontes = [{ nome: 'Só este', valor: 10 }];
-    // as parcelas derivadas dos poderes (Lugan da Batalha 150 e Lugan Completo 30) continuam somando
-    expect(combate(f, 'esquivar').total).toBe(207 + 3 + 150 + 30 + 10);
-    expect(combate(f, 'ataqueArmaBranca').total).toBe(1078);
-    expect(combate(f, 'aparar').total).toBe(1094);
+    // as parcelas derivadas dos poderes (Lugan da Batalha 250 e Lugan Completo 180) continuam somando
+    expect(combate(f, 'esquivar').total).toBe(207 + 3 + 250 + 180 + 10);
+    expect(combate(f, 'ataqueArmaBranca').total).toBe(1578);
+    expect(combate(f, 'aparar').total).toBe(1594);
   });
 });
 
 describe('dano', () => {
-  it('básico: 3d×322 +120', () => {
+  it('básico: 3d×442 +280 (Força nova; fixo = 20 × 5 + 20 × 6 + 10 × 6)', () => {
     expect(dano(ficha)).toEqual({
       dados: 3,
-      multiplicador: 322,
-      fixo: 120,
+      multiplicador: 442,
+      fixo: 280,
       fieisBonus: 0,
-      texto: '3d×322 +120',
+      texto: '3d×442 +280',
     });
   });
 
-  it('com Golpe Devastador: 5d×322 +120', () => {
+  it('com Golpe Devastador: 5d×442 +280', () => {
     const r = dano(ficha, golpeDevastador);
     expect(r.dados).toBe(5);
-    expect(r.texto).toBe('5d×322 +120');
+    expect(r.texto).toBe('5d×442 +280');
   });
 
   it('fiéis somam 1 por 400 ao bônus fixo mostrado no texto', () => {
@@ -345,8 +347,8 @@ describe('dano', () => {
     f.fieis = 850;
     const r = dano(f);
     expect(r.fieisBonus).toBe(2);
-    expect(r.fixo).toBe(120);
-    expect(r.texto).toBe('3d×322 +122');
+    expect(r.fixo).toBe(280);
+    expect(r.texto).toBe('3d×442 +282');
   });
 
   it('o multiplicador acompanha o atributo configurado', () => {
@@ -357,11 +359,11 @@ describe('dano', () => {
 });
 
 describe('golpe', () => {
-  it('Golpe Devastador: ataque de 8d, total 1078 e dano 5d×322 +120', () => {
+  it('Golpe Devastador: ataque de 8d, total 1578 e dano 5d×442 +280', () => {
     const r = golpe(ficha, golpeDevastador);
     expect(r.ataqueDados).toBe(8);
-    expect(r.ataqueTotal).toBe(1078);
-    expect(r.dano.texto).toBe('5d×322 +120');
+    expect(r.ataqueTotal).toBe(1578);
+    expect(r.dano.texto).toBe('5d×442 +280');
   });
 });
 
@@ -412,7 +414,7 @@ describe('tsuValor', () => {
 describe('novaSessao', () => {
   it('começa com PV total cheio, fadiga zero e sem usos', () => {
     const s = novaSessao(ficha);
-    expect(s.pvAtual).toBe(3904);
+    expect(s.pvAtual).toBe(4904);
     expect(s.fadiga).toBe(0);
     expect(s.anotacoes).toBe('');
     expect(s).not.toHaveProperty('rolagens');
@@ -533,13 +535,13 @@ describe('migrarFicha', () => {
 describe('mostraNaBatalha, poderUsavel e usoDoPoder', () => {
   const base = { id: 'x', nome: 'X', nivel: 1, descricao: '' };
 
-  it('defensivo e item aparecem por padrão; passivo e ativo só se marcados; removido nunca', () => {
-    expect(mostraNaBatalha({ ...base, tipo: 'defensivo' })).toBe(true);
+  it('defesa e item aparecem por padrão; passivo e ativo só se marcados; removido nunca', () => {
+    expect(mostraNaBatalha({ ...base, tipo: 'defesa' })).toBe(true);
     expect(mostraNaBatalha({ ...base, tipo: 'item' })).toBe(true);
     expect(mostraNaBatalha({ ...base, tipo: 'passivo' })).toBe(false);
     expect(mostraNaBatalha({ ...base, tipo: 'ativo' })).toBe(false);
     expect(mostraNaBatalha({ ...base, tipo: 'passivo', mostrarNaBatalha: true })).toBe(true);
-    expect(mostraNaBatalha({ ...base, tipo: 'defensivo', mostrarNaBatalha: false })).toBe(false);
+    expect(mostraNaBatalha({ ...base, tipo: 'defesa', mostrarNaBatalha: false })).toBe(false);
     expect(mostraNaBatalha({ ...base, tipo: 'removido', mostrarNaBatalha: true })).toBe(false);
   });
 
@@ -564,7 +566,7 @@ describe('resumoBatalha', () => {
 
   it('traz o card Minha rodada: PV, fadiga, rolagem base, arma e Velocidade Divina', () => {
     const r = resumo();
-    expect(r.pv).toEqual({ atual: 3904, total: 3904 });
+    expect(r.pv).toEqual({ atual: 4904, total: 4904, base: 2904, protecaoDivina: 2000, outros: 0 });
     expect(r.fadiga).toBe(0);
     expect(r.rolagemBase).toBe('2d×100');
     expect(r.armaPrincipal).toBe('Jikar');
@@ -573,15 +575,15 @@ describe('resumoBatalha', () => {
 
   it('calcula o ataque e o dano básicos (oráculo da planilha)', () => {
     const r = resumo();
-    expect(r.ataqueBasico).toEqual({ dados: 5, bonus: 1078, texto: '5d×100 +1078' });
-    expect(r.danoBasico.texto).toBe('3d×322 +120');
+    expect(r.ataqueBasico).toEqual({ dados: 5, bonus: 1578, texto: '5d×100 +1578' });
+    expect(r.danoBasico.texto).toBe('3d×442 +280');
   });
 
   it('calcula o Golpe Devastador com pressão de 24 km² e 3 usos restantes', () => {
     const [g] = resumo().golpes;
     expect(g.nome).toBe('Golpe Devastador de Lugan');
-    expect(g.ataque.texto).toBe('8d×100 +1078');
-    expect(g.dano.texto).toBe('5d×322 +120');
+    expect(g.ataque.texto).toBe('8d×100 +1578');
+    expect(g.dano.texto).toBe('5d×442 +280');
     expect(g.pontos).toBe(3);
     expect(g.pressaoKm2).toBe(24);
     expect(g.uso).toMatchObject({ usados: 0, limite: 3, restantes: 3, esgotado: false });
@@ -595,20 +597,20 @@ describe('resumoBatalha', () => {
     expect(resumoBatalha(ficha, sessao).golpes[0].uso).toMatchObject({ restantes: 0, esgotado: true });
   });
 
-  it('lista as defesas na ordem aparar, bloquear, esquivar com os valores da planilha', () => {
+  it('lista as defesas na ordem aparar, bloquear, esquivar com os valores das escalas', () => {
     const d = resumo().defesas;
     expect(d.map((x) => x.nome)).toEqual(['Aparar', 'Bloquear', 'Esquivar']);
-    expect(d.map((x) => x.rolagem.bonus)).toEqual([1094, 941, 540]);
+    expect(d.map((x) => x.rolagem.bonus)).toEqual([1594, 1161, 760]);
     // A Jikar dá +3 dados também nas defesas (dados extras da ficha), então todas rolam 5d.
-    expect(d.map((x) => x.rolagem.texto)).toEqual(['5d×100 +1094', '5d×100 +941', '5d×100 +540']);
+    expect(d.map((x) => x.rolagem.texto)).toEqual(['5d×100 +1594', '5d×100 +1161', '5d×100 +760']);
   });
 
-  it('as absorções vêm de defensivo, item e dos passivos marcados', () => {
+  it('as absorções vêm de defesa, item e dos passivos marcados', () => {
     const nomes = resumo().protecoes.map((p) => p.nome);
     expect(nomes).toEqual(['Portador da Jikar', 'Proteção Divina', 'Lugan Completo']);
     const protecao = resumo().protecoes.find((p) => p.id === 'protecao_divina');
     expect(protecao?.descricao).toContain('absorve 200');
-    expect(protecao?.uso).toMatchObject({ limite: 2, restantes: 2 });
+    expect(protecao?.uso).toMatchObject({ limite: 4, restantes: 4 });
   });
 
   it('desmarcar um poder o tira das absorções e o tipo removido o esconde', () => {
@@ -621,7 +623,7 @@ describe('resumoBatalha', () => {
   it('lista os usos apenas de poderes com usos por dia ou custo de fadiga', () => {
     expect(resumo().usos.map((u) => [u.id, u.restantes])).toEqual([
       ['golpe_devastador', 3],
-      ['protecao_divina', 2],
+      ['protecao_divina', 4],
       ['o_filho_de_hagashi', 1],
     ]);
   });
@@ -638,8 +640,8 @@ describe('resumoBatalha', () => {
     f.fieis = 400;
     f.golpes[0].pressaoPorPonto = 10;
     const r = resumoBatalha(f, novaSessao(f));
-    expect(r.ataqueBasico.bonus).toBe(1080);
-    expect(r.danoBasico.texto).toBe('3d×322 +121');
+    expect(r.ataqueBasico.bonus).toBe(1580);
+    expect(r.danoBasico.texto).toBe('3d×442 +281');
     expect(r.golpes[0].pressaoKm2).toBe(30);
   });
 

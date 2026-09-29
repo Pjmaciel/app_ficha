@@ -194,7 +194,7 @@ const PODERES: { id: string; nome: string; tipo: TipoPoder; linha: number; usosP
   { id: 'portador_da_jikar', nome: 'Portador da Jikar', tipo: 'item', linha: 82 },
   { id: 'campeao_do_combate_divino', nome: 'Campeão do Combate Divino', tipo: 'passivo', linha: 87 },
   { id: 'forca_das_montanhas_divinas', nome: 'Força das Montanhas Divinas', tipo: 'passivo', linha: 93 },
-  { id: 'protecao_divina', nome: 'Proteção Divina', tipo: 'defensivo', linha: 98, usosPorDia: 1 },
+  { id: 'protecao_divina', nome: 'Proteção Divina', tipo: 'defesa', linha: 98, usosPorDia: 1 },
   { id: 'o_filho_de_hagashi', nome: 'O Filho de Hagashi', tipo: 'passivo', linha: 106, usosPorDia: 1 },
   { id: 'lugan_completo', nome: 'Lugan Completo', tipo: 'passivo', linha: 115, mostrarNaBatalha: true },
   { id: 'manipulador_de_tsu_real', nome: 'Manipulador de Tsu Real', tipo: 'passivo', linha: 124 },
@@ -208,6 +208,7 @@ function descricaoDoPoder(lugan: XLSX.WorkSheet, id: string, linha: number): str
   return juntarLinhas(partes.join('\n'));
 }
 
+/** O importador traz só o nível da planilha; a migração o converte em valor base do pilar + pontos livres (semente do pilar). */
 function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
   return PODERES.map(({ id, nome, tipo, linha, usosPorDia, mostrarNaBatalha }) => {
     const nivel = nivelOuNulo(lugan, `D${linha}`);
@@ -215,7 +216,6 @@ function lerPoderes(lugan: XLSX.WorkSheet): Poder[] {
       id,
       nome,
       nivel,
-      pontosProprios: nivel,
       tipo,
       descricao: descricaoDoPoder(lugan, id, linha),
     };

@@ -1,12 +1,15 @@
 // Aba Poderes: cadastro completo; poderes do tipo "removido" continuam listados, em cinza.
-import { comSinal, efeitosDoPoder, formatarNumero, mostraNaBatalha, pontosDoPilar, usosPorDiaDoPoder } from '../../engine';
-import type { AtributoId, ChaveCombate, EfeitoEscalavel, EscalaPoder, PatamarPoder, Poder, TipoPoder } from '../../model/types';
+import { comSinal, efeitosDoPoder, formatarNumero, composicaoDoPoder, mostraNaBatalha, resolverTexto, usosPorDiaDoPoder } from '../../engine';
+import type { AtributoId, ChaveCombate, EfeitoEscalavel, EscalaPoder, PatamarPoder, OrigemPoder, Poder, TipoPoder } from '../../model/types';
 import { ATRIBUTOS, CHAVES_COMBATE, previaViva, ROTULO_ATRIBUTO, ROTULO_COMBATE, ROTULO_TIPO_PODER } from '../componentes';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, definirValor, entradaNumero, entradaTexto, h, limpar, novoIdItem, selecao } from '../dom';
 import { secaoTextosBatalha } from './textos-batalha';
 
 const TIPOS = Object.keys(ROTULO_TIPO_PODER) as TipoPoder[];
+
+const ROTULO_ORIGEM: Record<OrigemPoder, string> = { pilar: 'Pilar', livre: 'Livre', item: 'Item', manual: 'Manual' };
+const ORIGENS = Object.keys(ROTULO_ORIGEM) as OrigemPoder[];
 
 type CampoEscala = 'danoPorNivel' | 'pvPorNivel' | 'usosPorNivel' | 'fieisPorNivel' | 'dadosAtaquePorNivel' | 'dadosDanoPorNivel';
 
@@ -214,15 +217,17 @@ function secaoEscala(ctx: Contexto, p: Poder, usos: HTMLInputElement): HTMLEleme
     secaoPatamares(ctx, p));
 }
 
-/** "Próprios 2 + pilar 1 = nível 3": de onde vem o nível do poder (refeita a cada mudança). */
+/** Descrição do poder com os marcadores resolvidos no nível atual (o texto cru só aparece ao editar). */
+function resolvida(ctx: Contexto, obter: () => string): HTMLElement {
+  const p = h('p', { class: 'descricao descricao-resolvida' });
+  ctx.ligar(() => definirTexto(p, resolverTexto(ctx.ficha(), obter()) || 'Sem descrição.'));
+  return p;
+}
+
+/** "Lugan da Batalha 5 — Pilar: 1 × 3 = 3 · Poderes livres: +2 · Total: 5": de onde vem o nível do poder (refeita a cada mudança). */
 function linhaPilar(ctx: Contexto, p: Poder): HTMLElement {
   const linha = h('p', { class: 'detalhe nivel-pilar' });
-  ctx.ligar(() => {
-    const pilar = pontosDoPilar(ctx.ficha(), p);
-    const pacote = ctx.ficha().pilar.pacotePorNivel[p.id] ?? 0;
-    definirTexto(linha, `Próprios ${p.pontosProprios ?? 0} + pilar ${pilar} = nível total ${p.nivel ?? 0}`
-      + (pacote !== 0 ? ` (pacote ${pacote} × ${ctx.ficha().pilar.nivel - ctx.ficha().pilar.nivelAplicado} nível(is) do pilar acima da base)` : ''));
-  });
+  ctx.ligar(() => definirTexto(linha, composicaoDoPoder(ctx.ficha(), p).texto));
   return linha;
 }
 
@@ -238,7 +243,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     const tipo = selecao<TipoPoder>(TIPOS.map((t) => [t, ROTULO_TIPO_PODER[t]]), p.tipo, (v) => {
       p.tipo = v;
       raiz.classList.toggle('removido', v === 'removido');
-      // Sem escolha explícita, a marca segue o tipo (defensivo e item aparecem por padrão).
+      // Sem escolha explícita, a marca segue o tipo (defesa e item aparecem por padrão).
       marca.checked = mostraNaBatalha(p);
       marca.disabled = v === 'removido';
       ctx.mudou();
@@ -256,12 +261,13 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
     raiz.append(
       h('div', { class: 'campos' },
         campo('Nome', nome),
-        campo('Pontos próprios (vazio = sem nível)', entradaNumero(p.pontosProprios ?? p.nivel, (v) => { p.pontosProprios = v; ctx.mudou(); }, { min: 0, aceitaVazio: true })),
-        campo('Pacote do pilar por nível do pilar', entradaNumero(f().pilar.pacotePorNivel[p.id] ?? null, (v) => {
+        campo('Pontos livres (vazio = sem nível)', entradaNumero(p.pontosLivres ?? null, (v) => { p.pontosLivres = v; ctx.mudou(); }, { aceitaVazio: true })),
+        campo('Valor base do pilar (pontos por nível do pilar)', entradaNumero(f().pilar.pacotePorNivel[p.id] ?? null, (v) => {
           if (v === null || v === 0) delete f().pilar.pacotePorNivel[p.id];
           else f().pilar.pacotePorNivel[p.id] = v;
           ctx.mudou();
         }, { aceitaVazio: true })),
+        campo('Origem', selecao<OrigemPoder>(ORIGENS.map((o) => [o, ROTULO_ORIGEM[o]]), p.origem ?? 'livre', (v) => { p.origem = v; ctx.mudou(); })),
         campo('Tipo', tipo),
         campo('Custo de fadiga', entradaOpcional('custoFadiga')),
         campo('Usos por dia', usos),
@@ -271,8 +277,11 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
           ctx.mudou();
         }, { min: 0, aceitaVazio: true }))),
       linhaPilar(ctx, p),
-      campo('Descrição', descricao),
-      previaViva(ctx, () => p.descricao),
+      resolvida(ctx, () => p.descricao),
+      h('details', { class: 'descricao-poder' },
+        h('summary', {}, 'Editar descrição (texto com marcadores)'),
+        campo('Descrição', descricao),
+        previaViva(ctx, () => p.descricao)),
       secaoEscala(ctx, p, usos),
       h('label', { class: 'marcador' }, marca, h('span', {}, 'Mostrar na aba Batalha (absorções e proteções)')),
       h('button', {
@@ -298,12 +307,12 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
 
   return h('div', {},
     h('p', { class: 'detalhe' },
-      'Só entram no painel de sessão os poderes com custo de fadiga ou usos por dia e tipo diferente de Removido. Poderes defensivos e itens aparecem por padrão na aba Batalha; os demais, se marcados.'),
+      'Só entram no painel de sessão os poderes com custo de fadiga ou usos por dia e tipo diferente de Removido. Poderes de defesa e itens aparecem por padrão na aba Batalha; os demais, se marcados.'),
     lista,
     h('button', {
       type: 'button', class: 'destaque',
       onclick: () => {
-        f().poderes.push({ id: novoIdItem('poder'), nome: 'Novo poder', nivel: null, pontosProprios: null, tipo: 'passivo', descricao: '' });
+        f().poderes.push({ id: novoIdItem('poder'), nome: 'Novo poder', nivel: null, pontosLivres: null, origem: 'manual', tipo: 'passivo', descricao: '' });
         desenhar(f().poderes.length - 1);
         ctx.mudou();
       },

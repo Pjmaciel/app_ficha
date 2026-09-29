@@ -1,5 +1,5 @@
 // Aba Identidade: dados do personagem, níveis, pontos de vida, experiência e regras.
-import { descerPilar, fontesDerivadasPv, pilarTexto, previaPilar, pvBase, pvTotal, subirPilar } from '../../engine';
+import { descerPilar, fontesDerivadasPv, pilarTexto, previaPilar, pvBase, pvDaProtecaoDivina, pvTotal, subirPilar } from '../../engine';
 import { PILAR_MAX, PILAR_MIN } from '../../model/pilar-padrao';
 import type { Ficha } from '../../model/types';
 import { editorFontes } from '../componentes';
@@ -47,10 +47,6 @@ function secaoPilar(ctx: Contexto, exibido: HTMLElement): HTMLElement {
     subir.disabled = f().pilar.nivel >= PILAR_MAX;
     descer.disabled = f().pilar.nivel <= PILAR_MIN;
   });
-  const nivelAplicado = entradaNumero(f().pilar.nivelAplicado, (v) => {
-    f().pilar.nivelAplicado = Math.max(0, Math.min(PILAR_MAX, v ?? 0));
-    ctx.mudou();
-  }, { min: 0 });
   return h('section', { class: 'cartao', 'aria-label': 'Pilar lugânico' },
     h('h3', {}, 'Pilar lugânico (aspecto do mundo)'),
     h('div', { class: 'campos' },
@@ -58,17 +54,14 @@ function secaoPilar(ctx: Contexto, exibido: HTMLElement): HTMLElement {
     h('p', {}, 'Pilar exibido na ficha: ', exibido, ` (nível de ${PILAR_MIN} a ${PILAR_MAX})`),
     h('div', { class: 'controles' }, descer, subir),
     h('p', { class: 'detalhe' },
-      'Ao subir de nível, o pilar concede de novo o pacote de poderes (por exemplo, Proteção Divina +1) e todas as escalas recalculam: '
-      + 'PV, usos, combate, textos e patamares. Ao descer, o pacote é retirado (um poder nunca fica abaixo de 0). '
-      + 'O pacote de cada poder é editável na aba Poderes.'),
+      'Nível final do poder = valor base do pilar × nível do pilar + pontos livres. Ao subir de nível, o pilar concede de novo o pacote '
+      + '(por exemplo, Proteção Divina +1 por nível do pilar) e todas as escalas recalculam: PV, usos, combate, textos e patamares. '
+      + 'Ao descer, o pacote é retirado (um poder nunca fica abaixo de 0); os pontos livres não mudam. '
+      + 'O valor base do pilar e os pontos livres de cada poder são editáveis na aba Poderes.'),
     previaDoPilar(ctx, 'Ao subir', () => f().pilar.nivel + 1),
     previaDoPilar(ctx, 'Ao descer', () => f().pilar.nivel - 1),
-    h('details', { class: 'escala-poder' },
-      h('summary', {}, 'Base da conta do pacote'),
-      h('div', { class: 'campos' }, campo('Nível do pilar já contado nos pontos próprios dos poderes', nivelAplicado)),
-      h('p', { class: 'detalhe' },
-        'Pontos do pilar em um poder = pacote × (nível do pilar − esta base). Nos dados originais a base é 3, porque os pontos atuais dos poderes já incluem o pacote até o nível 3. '
-        + 'Poderes com "Pilar mínimo" acima do nível do pilar geram um alerta e só funcionam quando o aspecto do mundo chegar a ele.')));
+    h('p', { class: 'detalhe' },
+      'Poderes com "Pilar mínimo" acima do nível do pilar geram um alerta e só funcionam quando o aspecto do mundo chegar a ele.'));
 }
 
 export function abaIdentidade(ctx: Contexto): HTMLElement {
@@ -92,8 +85,10 @@ export function abaIdentidade(ctx: Contexto): HTMLElement {
 
   const pvBaseTexto = h('strong', {});
   const pvTotalTexto = h('strong', {});
+  const pvProtecaoTexto = h('strong', {});
   ctx.ligar(() => {
     definirTexto(pvBaseTexto, String(pvBase(f())));
+    definirTexto(pvProtecaoTexto, String(pvDaProtecaoDivina(f())));
     definirTexto(pvTotalTexto, String(pvTotal(f())));
   });
 
@@ -115,6 +110,7 @@ export function abaIdentidade(ctx: Contexto): HTMLElement {
       h('h3', {}, 'Pontos de vida'),
       h('div', { class: 'campos' }, numeroId('PV por ponto de Fortitude', 'basePv', 0)),
       h('p', {}, 'PV base (PV por ponto × Fortitude): ', pvBaseTexto),
+      h('p', {}, 'Parcela da Proteção Divina: ', pvProtecaoTexto),
       editorFontes(ctx, f().pvExtras, {
         titulo: 'PV extras', adicionar: 'Adicionar PV extra', cabecalho: true, vazio: 'Nenhum PV extra manual.',
         derivadas: () => fontesDerivadasPv(f()),

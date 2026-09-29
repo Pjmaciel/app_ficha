@@ -21,7 +21,10 @@ export type GrupoPericia = 'artes' | 'ciencias' | 'crime' | 'esporte' | 'idioma'
 export interface Pericia { id: string; nome: string; grupo: GrupoPericia; atributo: AtributoId; inicial: number; graduacao: number }
 // total = inicial + atributos[atributo].total + graduacao
 
-export type TipoPoder = 'passivo' | 'ativo' | 'defensivo' | 'item' | 'removido';
+/** `removido` é um estado (o poder deixa de valer sem sair da lista); os demais são a natureza do poder. */
+export type TipoPoder = 'passivo' | 'ativo' | 'defesa' | 'item' | 'recurso' | 'removido';
+/** De onde vem o poder: pacote do pilar, pontos livres (evolução, bônus ou recompensa), item ou cadastro manual. */
+export type OrigemPoder = 'pilar' | 'livre' | 'item' | 'manual';
 export type ChaveCombate = 'ataqueArmaBranca' | 'ataqueMagico' | 'ataqueLuta' | 'ataqueArmaFogo' | 'esquivar' | 'bloquear' | 'aparar';
 
 /**
@@ -80,19 +83,25 @@ export interface Poder {
   descricao: string;
   custoFadiga?: number;
   usosPorDia?: number;
-  /** Mostra o poder na aba Batalha; ausente, vale true para os tipos defensivo e item. Poder removido nunca aparece. */
+  /** Mostra o poder na aba Batalha; ausente, vale true para os tipos defesa e item. Poder removido nunca aparece. */
   mostrarNaBatalha?: boolean;
   /** Escala numérica por nível; ausente, o poder não gera parcelas derivadas. */
   escala?: EscalaPoder;
   /** Aspecto do mundo (pilar) mínimo para o poder funcionar (ex.: honra 3); acima do pilar atual, a ficha alerta. */
   requerPilar?: number;
   /**
-   * Pontos que o jogador e o mestre deram ao poder (editável; nulo = poder sem nível). O `nivel` do poder é derivado:
-   * pontosProprios + pontosDoPilar (nunca abaixo de zero), recalculado pelo motor (`aplicarPilar`).
+   * Valor base do pilar: pontos que o pacote do pilar concede a cada nível do pilar (espelho de
+   * `Pilar.pacotePorNivel[id]`, que é a fonte; derivado pelo motor em `aplicarPilar`). Zero fora do pacote.
    */
-  pontosProprios?: number | null;
-  /** Pontos vindos do pilar: pacote do poder × (nível do pilar − nível já aplicado); derivado, pode ser negativo. */
-  pontosDoPilar?: number;
+  valorBasePilar?: number;
+  /**
+   * Pontos livres (evolução pessoal, bônus, realocação ou recompensa; editável, nulo = poder sem nível).
+   * Somam por fora e não são multiplicados pelo nível do pilar.
+   * Regra: `nivel` = valorBasePilar × nível do pilar + pontosLivres (nunca abaixo de zero), calculado por `aplicarPilar`.
+   */
+  pontosLivres?: number | null;
+  /** Origem do poder; ausente, o motor a deduz (pacote do pilar, item ou livre). */
+  origem?: OrigemPoder;
 }
 
 export type Elemento = 'fogo' | 'agua' | 'ar' | 'terra' | 'luz' | 'trevas';
@@ -149,17 +158,14 @@ export interface Regras {
 }
 
 /**
- * Pilar lugânico (aspecto do mundo), exibido como "Justiça 3". Subir de nível concede de novo o pacote de poderes;
- * descer o retira. Os pontos do pilar em cada poder são `pacotePorNivel[id] × (nivel − nivelAplicado)`: os níveis até
- * `nivelAplicado` já estão embutidos nos pontos próprios dos poderes, então a semente (Justiça 3, aplicado 3) não muda nada.
+ * Pilar lugânico (aspecto do mundo), exibido como "Justiça 3". Cada poder do pacote recebe `pacotePorNivel[id] × nível
+ * do pilar` pontos; subir o pilar concede o pacote de novo (soma) e descer o retira. Os pontos livres do poder ficam por fora.
  */
 export interface Pilar {
   nome: string;
   /** Aspecto do mundo, de 1 a 5. */
   nivel: number;
-  /** Nível do pilar cujo pacote já está contado nos pontos próprios dos poderes (a base da conta). */
-  nivelAplicado: number;
-  /** Pontos que cada poder (por id) recebe a cada nível do pilar. */
+  /** Valor base do pilar de cada poder (por id): pontos concedidos a cada nível do pilar; multiplica o nível do pilar. */
   pacotePorNivel: Record<string, number>;
   /** Efeitos do pilar no nível atual (ex.: teste do Dragão Vermelho = 800 × nível); marcadores `{pilar.<id>}`. */
   efeitos: EfeitoEscalavel[];

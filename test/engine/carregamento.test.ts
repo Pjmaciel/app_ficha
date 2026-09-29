@@ -6,8 +6,8 @@ import type { Ficha } from '../../src/model/types';
 const embutida = dados as unknown as Ficha;
 
 describe('decidirCarregamento', () => {
-  it('a ficha embutida está na revisão 5', () => {
-    expect(embutida.revisaoDados).toBe(5);
+  it('a ficha embutida está na revisão 7 (descrições vivas dos poderes)', () => {
+    expect(embutida.revisaoDados).toBe(7);
   });
 
   it('sem ficha salva usa a embutida', () => {
@@ -26,14 +26,16 @@ describe('decidirCarregamento', () => {
     expect(decidirCarregamento({ versao: 2 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
   });
 
-  it('as revisões 3 e 4 (antes do pilar com escala) pedem o aviso', () => {
+  it('as revisões 3 a 6 (antes das descrições vivas) pedem o aviso', () => {
     expect(decidirCarregamento({ versao: 2, revisaoDados: 3 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
     expect(decidirCarregamento({ versao: 2, revisaoDados: 4 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: 5 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: 6 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
   });
 
   it('versão 2 com a mesma revisão (ou maior) é mantida sem aviso', () => {
-    expect(decidirCarregamento({ versao: 2, revisaoDados: 5 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
-    expect(decidirCarregamento({ versao: 2, revisaoDados: 6 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: 7 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: 8 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
   });
 });
 
