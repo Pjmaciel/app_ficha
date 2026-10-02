@@ -13,6 +13,7 @@ import type {
   Tsu,
 } from '../model/types';
 import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao } from '../model/batalha-padrao';
+import { REGRAS_EVOLUCAO_PADRAO } from '../model/evolucao-padrao';
 import { pilarPadrao } from '../model/pilar-padrao';
 
 /** Regras do contrato v2 que a planilha não traz em células numéricas próprias. */
@@ -370,6 +371,7 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
       nivelReferencia: NIVEL_REFERENCIA,
       bonusReferencia: BONUS_REFERENCIA,
       diferencaMaximaAtributos: DIFERENCA_MAXIMA_ATRIBUTOS,
+      ...REGRAS_EVOLUCAO_PADRAO,
     },
     atributos,
     pericias,
@@ -391,5 +393,6 @@ export function importarXlsx(buffer: ArrayBuffer): Ficha {
     reacoes: reacoesPadrao(),
     fieis: 0,
     xp: { total: numero(lugan, 'C1'), atual: numero(lugan, 'E4') },
+    pontosDePoderDisponiveis: 0,
   };
 }

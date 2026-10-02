@@ -15,6 +15,7 @@ const CHAVES_COMBATE: ChaveCombate[] = [
 const TIPOS_PODER = ['passivo', 'ativo', 'defesa', 'defensivo', 'item', 'recurso', 'removido'];
 // 'pilar' é a origem antiga (pacote do pilar, extinto): a migração converte a ficha para a build da mesa.
 const ORIGENS_PODER = ['pilar', 'livre', 'item', 'manual'];
+const REGRAS_NIVEL = ['livro', 'planilha'];
 const ELEMENTOS = ['fogo', 'agua', 'ar', 'terra', 'luz', 'trevas'];
 
 type Objeto = Record<string, unknown>;
@@ -232,6 +233,15 @@ function validarV2(dados: Objeto): void {
   for (const campo of ['pontosIniciais', 'bonusPorNivel', 'nivelReferencia', 'bonusReferencia', 'diferencaMaximaAtributos']) {
     exigir(ehNumero(regras[campo]), `regras.${campo} deve ser numérico.`);
   }
+  // Evolução por nível divino: ausentes, a migração coloca os padrões do livro (regra do livro, custo de 50 de XP por nível, incremento 0).
+  for (const campo of ['xpProximoNivel', 'incrementoXpPorNivel']) {
+    exigir(regras[campo] === undefined || (ehNumero(regras[campo]) && (regras[campo] as number) >= 0), `regras.${campo} deve ser um número não negativo.`);
+  }
+  exigir(regras.regraNivel === undefined || REGRAS_NIVEL.includes(regras.regraNivel as string), 'regras.regraNivel deve ser "livro" ou "planilha".');
+  exigir(
+    dados.pontosDePoderDisponiveis === undefined || (ehNumero(dados.pontosDePoderDisponiveis) && (dados.pontosDePoderDisponiveis as number) >= 0),
+    'pontosDePoderDisponiveis deve ser um número não negativo.',
+  );
 
   exigir(ehObjeto(atributos), 'campo atributos ausente.');
   for (const id of ATRIBUTOS) {

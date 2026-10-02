@@ -29,7 +29,11 @@ describe('ficha do Alexsander', () => {
       nivelReferencia: 41,
       bonusReferencia: 47,
       diferencaMaximaAtributos: 120,
+      regraNivel: 'livro',
+      xpProximoNivel: 50,
+      incrementoXpPorNivel: 0,
     });
+    expect(ficha.pontosDePoderDisponiveis).toBe(0);
   });
 
   it('a build da mesa: só o Campeão (3), o Lugan da Batalha (1) e a Proteção Divina (2) mais o item Jikar entram nos cálculos', () => {

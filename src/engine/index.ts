@@ -1,6 +1,7 @@
 import { PILAR_NIVEL_PADRAO, PRESSAO_GOLPE_POR_PONTO, acoesPadrao, lembretesPadrao, reacoesPadrao, textoVivo } from '../model/batalha-padrao';
 import { descricaoPadrao, ehDescricaoAntiga, escalaPadrao } from '../model/escalas-padrao';
 import { BUILD_MESA, ROTULO_BUILD } from '../model/build-mesa';
+import { ATRIBUTOS_POR_NIVEL, BONUS_ATRIBUTO_LIVRO, BONUS_PERICIAS_LIVRO, REGRAS_EVOLUCAO_PADRAO } from '../model/evolucao-padrao';
 import { limitarNivelPilar, pilarPadrao } from '../model/pilar-padrao';
 import type {
   AcaoBatalha,
@@ -402,8 +403,12 @@ export function bonusNivelEsperado(f: Ficha): number {
   return bonusReferencia + bonusPorNivel * (f.identidade.nivel - nivelReferencia);
 }
 
-/** Mensagem de alerta quando algum bônus de nível difere do esperado; nulo se tudo confere. */
+/**
+ * Mensagem de alerta quando algum bônus de nível difere do esperado; nulo se tudo confere. Só vale na regra da planilha:
+ * na do livro os atributos deixam de subir por igual (cada nível divino dá +10 em quatro à escolha).
+ */
 export function alertaBonusNivel(f: Ficha): string | null {
+  if (f.regras.regraNivel !== 'planilha') return null;
   const esperado = bonusNivelEsperado(f);
   const divergentes = ATRIBUTOS.filter((id) => f.atributos[id].bonusNivel !== esperado);
   if (divergentes.length === 0) return null;
@@ -552,15 +557,100 @@ export function golpe(
   };
 }
 
-/** Sobe `quantos` níveis: soma bonusPorNivel × quantos ao bônus de nível de todos os atributos. Pura. */
-export function subirNivel(f: Ficha, quantos: number): Ficha {
-  if (!Number.isInteger(quantos) || quantos < 1) {
-    throw new Error(`Quantidade de níveis inválida: ${quantos}`);
+/** Escolha do jogador ao subir de nível: quatro atributos (regra do livro) ou quantos níveis (regra da planilha). */
+export interface EscolhaSubirNivel {
+  /** Regra do livro: exatamente quatro atributos distintos, que recebem +10 no bônus de nível. */
+  atributos?: AtributoId[];
+  /** Regra da planilha: quantidade de níveis (inteiro positivo; padrão 1). */
+  quantos?: number;
+}
+
+function exigirAtributosDoNivel(atributos: AtributoId[] | undefined): AtributoId[] {
+  const escolhidos = atributos ?? [];
+  const validos = escolhidos.every((id) => ATRIBUTOS.includes(id));
+  if (!validos || new Set(escolhidos).size !== escolhidos.length || escolhidos.length !== ATRIBUTOS_POR_NIVEL) {
+    throw new Error(`Escolha exatamente ${ATRIBUTOS_POR_NIVEL} atributos distintos para subir de nível.`);
   }
+  return escolhidos;
+}
+
+/**
+ * Sobe de nível pela regra de `regras.regraNivel`. Pura.
+ * Livro (um nível por vez): +10 no bônus de nível dos quatro atributos escolhidos; nível novo par, +4 na graduação de todas as
+ * perícias; ímpar, +1 em `pontosDePoderDisponiveis`; desconta `xpProximoNivel` de `xp.atual` (sem ficar negativo) e soma
+ * `incrementoXpPorNivel` ao custo seguinte. Planilha: soma `bonusPorNivel × quantos` ao bônus de nível de todos os atributos
+ * (não mexe no XP). O nível lugânico nunca muda.
+ */
+export function subirNivel(f: Ficha, escolha: EscolhaSubirNivel = {}): Ficha {
   const nova = structuredClone(f);
-  nova.identidade.nivel += quantos;
-  for (const a of Object.values(nova.atributos)) a.bonusNivel += f.regras.bonusPorNivel * quantos;
+  if (f.regras.regraNivel === 'planilha') {
+    const quantos = escolha.quantos ?? 1;
+    if (!Number.isInteger(quantos) || quantos < 1) throw new Error(`Quantidade de níveis inválida: ${quantos}`);
+    nova.identidade.nivel += quantos;
+    for (const a of Object.values(nova.atributos)) a.bonusNivel += f.regras.bonusPorNivel * quantos;
+    return nova;
+  }
+  const atributos = exigirAtributosDoNivel(escolha.atributos);
+  nova.identidade.nivel += 1;
+  for (const id of atributos) nova.atributos[id].bonusNivel += BONUS_ATRIBUTO_LIVRO;
+  if (nova.identidade.nivel % 2 === 0) {
+    for (const p of nova.pericias) p.graduacao += BONUS_PERICIAS_LIVRO;
+  } else {
+    nova.pontosDePoderDisponiveis += 1;
+  }
+  nova.xp.atual = Math.max(0, f.xp.atual - f.regras.xpProximoNivel);
+  nova.regras.xpProximoNivel += f.regras.incrementoXpPorNivel;
   return nova;
+}
+
+/** Andamento do XP rumo ao próximo nível: acumulado, exigido, quanto falta e o número do nível seguinte. */
+export function progressoXp(f: Ficha): { atual: number; necessario: number; falta: number; atingido: boolean; proximoNivel: number; fracao: number } {
+  const atual = f.xp.atual;
+  const necessario = f.regras.xpProximoNivel;
+  const falta = Math.max(0, necessario - atual);
+  return {
+    atual,
+    necessario,
+    falta,
+    atingido: atual >= necessario,
+    proximoNivel: f.identidade.nivel + 1,
+    fracao: necessario > 0 ? Math.max(0, Math.min(1, atual / necessario)) : 1,
+  };
+}
+
+/** Ganhos de subir um nível pela regra do livro com os atributos escolhidos até agora (aceita menos de quatro, para a prévia). */
+export interface PreviaSubirNivel {
+  novoNivel: number;
+  /** Escolhidos: bônus de nível antes e depois. */
+  atributos: { id: AtributoId; de: number; para: number }[];
+  /** +4 em todas as perícias quando o novo nível é par; senão 0. */
+  bonusPericias: number;
+  /** +1 quando o novo nível é ímpar; senão 0. */
+  pontosDePoder: number;
+  xpAtualDepois: number;
+  xpProximoNivelDepois: number;
+  /** Diferença entre o maior e o menor atributo depois da escolha (limite sem bônus: `diferencaMaximaAtributos`). */
+  diferenca: ReturnType<typeof diferencaAtributos>;
+  /** Há exatamente quatro atributos distintos. */
+  completa: boolean;
+}
+
+export function previaSubirNivel(f: Ficha, atributos: AtributoId[]): PreviaSubirNivel {
+  const escolhidos = [...new Set(atributos.filter((id) => ATRIBUTOS.includes(id)))];
+  const depois = structuredClone(f);
+  for (const id of escolhidos) depois.atributos[id].bonusNivel += BONUS_ATRIBUTO_LIVRO;
+  const novoNivel = f.identidade.nivel + 1;
+  const par = novoNivel % 2 === 0;
+  return {
+    novoNivel,
+    atributos: escolhidos.map((id) => ({ id, de: f.atributos[id].bonusNivel, para: depois.atributos[id].bonusNivel })),
+    bonusPericias: par ? BONUS_PERICIAS_LIVRO : 0,
+    pontosDePoder: par ? 0 : 1,
+    xpAtualDepois: Math.max(0, f.xp.atual - f.regras.xpProximoNivel),
+    xpProximoNivelDepois: f.regras.xpProximoNivel + f.regras.incrementoXpPorNivel,
+    diferenca: diferencaAtributos(depois),
+    completa: escolhidos.length === ATRIBUTOS_POR_NIVEL && escolhidos.length === atributos.length,
+  };
 }
 
 /** Valor efetivo da Tsu: oito vezes o nível quando é a Tsu real. */
@@ -924,6 +1014,7 @@ const REGRAS_PADRAO: Omit<Regras, 'pontosIniciais'> = {
   nivelReferencia: 41,
   bonusReferencia: 47,
   diferencaMaximaAtributos: 120,
+  ...REGRAS_EVOLUCAO_PADRAO,
 };
 
 const FIEIS_POR_PADRAO: Record<ChaveCombate, number | null> = {
@@ -1004,6 +1095,7 @@ function migrarV1(v1: FichaV1): Ficha {
     reacoes: reacoesPadrao(),
     fieis: 0,
     xp: v1.xp,
+    pontosDePoderDisponiveis: 0,
   };
   return aplicarPilar(ficha);
 }
@@ -1225,6 +1317,16 @@ function vivificarDescricao(f: Ficha, p: Poder): void {
   }
 }
 
+/**
+ * Evolução por nível divino (docs/evolucao-divina-requisitos.md): completa as regras e os pontos de poder ausentes com os valores
+ * do livro (regra do livro, custo de 50 de XP por nível, incremento 0, nenhum ponto de poder). Valores já salvos são respeitados.
+ */
+function completarEvolucao(f: Ficha): Ficha {
+  f.regras = { ...REGRAS_EVOLUCAO_PADRAO, ...f.regras };
+  f.pontosDePoderDisponiveis ??= 0;
+  return f;
+}
+
 /** Poderes já com `escala` (mesmo vazia) são respeitados; os conhecidos sem ela recebem a semente; os efeitos ausentes são semeados. */
 function aplicarEscalas(f: Ficha): Ficha {
   for (const p of f.poderes) {
@@ -1250,7 +1352,7 @@ export function migrarFicha(json: unknown): Ficha {
   if (versao === 2) {
     const salva = structuredClone(json as FichaV2Anterior);
     const anterior = ehAnteriorARegraDaMesa(salva);
-    const ficha = aplicarEscalas(aplicarPilar(completarPilar(completarBatalha(salva))));
+    const ficha = completarEvolucao(aplicarEscalas(aplicarPilar(completarPilar(completarBatalha(salva)))));
     return anterior ? converterParaBuild(ficha) : ficha;
   }
   if (versao === 1) return migrarV1(structuredClone(json as FichaV1));

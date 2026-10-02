@@ -83,6 +83,8 @@ input[type='checkbox'] { width: 1.5rem; height: 1.5rem; min-height: 0; accent-co
 .barra { height: 0.8rem; background: var(--fundo); border-radius: 999px; overflow: hidden; margin: 0.4rem 0; border: 1px solid var(--borda); }
 .barra .preenchimento { height: 100%; transition: width 0.2s; }
 .barra.pv .preenchimento { background: var(--cura); }
+.barra.xp .preenchimento { background: var(--destaque); }
+.resumo.pronto { color: var(--cura); }
 .controles { display: flex; gap: 0.4rem; align-items: center; }
 .controles button { flex: 1; }
 .controles input[type='number'] { width: 5rem; }
@@ -235,3 +237,9 @@ button.grande { min-height: 3.25rem; font-size: 1.05rem; }
 .pilar .teste-pilar { margin: 0.2rem 0 0.5rem; }
 .previa-pilar { margin: 0.2rem 0 0.6rem; padding-left: 1.2rem; display: grid; gap: 0.15rem; }
 .nivel-pilar { margin: 0; }
+
+/* Subir de nível (regra do livro) */
+.painel-subir-nivel { display: grid; gap: 0.5rem; margin: 0.6rem 0; border-color: var(--destaque); }
+.painel-subir-nivel h4 { margin: 0; }
+.painel-subir-nivel .grade { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.ganhos-nivel { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.25rem; }

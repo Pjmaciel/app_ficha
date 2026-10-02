@@ -1,6 +1,6 @@
 {
   "versao": 2,
-  "revisaoDados": 9,
+  "revisaoDados": 10,
   "identidade": {
     "nome": "Alexsander Somar III",
     "jogador": "Pablo Maciel",
@@ -65,7 +65,10 @@
     "bonusPorNivel": 4,
     "nivelReferencia": 41,
     "bonusReferencia": 47,
-    "diferencaMaximaAtributos": 120
+    "diferencaMaximaAtributos": 120,
+    "regraNivel": "livro",
+    "xpProximoNivel": 50,
+    "incrementoXpPorNivel": 0
   },
   "atributos": {
     "forca": {
@@ -1141,5 +1144,6 @@
   "xp": {
     "total": 62,
     "atual": 62
-  }
+  },
+  "pontosDePoderDisponiveis": 0
 }

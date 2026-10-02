@@ -64,6 +64,7 @@ function blocoPv(ctx: Contexto): HTMLElement {
       h('span', { class: 'numeros' }, campo('PV atual', campoPv, true), total)),
     barra,
     composicaoPv,
+    h('p', { class: 'detalhe lembrete-pv' }, 'PV se recupera por completo em 1 hora.'),
     h('div', { class: 'controles' },
       h('button', { type: 'button', class: 'perigo grande', onclick: () => aplicarPv(ctx, -quantia()) }, 'Dano'),
       campo('Valor de dano ou cura', valor, true),

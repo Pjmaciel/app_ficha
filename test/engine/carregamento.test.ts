@@ -6,8 +6,8 @@ import type { Ficha } from '../../src/model/types';
 const embutida = dados as unknown as Ficha;
 
 describe('decidirCarregamento', () => {
-  it('a ficha embutida está na revisão 8 (regra da mesa: pilar informativo e build livre)', () => {
-    expect(embutida.revisaoDados).toBe(9);
+  it('a ficha embutida está na revisão 10 (evolução por nível divino conforme o livro)', () => {
+    expect(embutida.revisaoDados).toBe(10);
   });
 
   it('sem ficha salva usa a embutida', () => {

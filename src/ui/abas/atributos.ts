@@ -1,10 +1,9 @@
-// Aba Atributos: total, bônus de nível, pontos e extras nomeados, com subir de nível.
-import {
-  baseAtributo, diferencaAtributos, fontesDerivadasAtributo, pontosRestantes, subirNivel, totalAtributoFicha,
-} from '../../engine';
+// Aba Atributos: total, bônus de nível, pontos e extras nomeados, com subir de nível (fluxo em ./subir-nivel).
+import { baseAtributo, diferencaAtributos, fontesDerivadasAtributo, pontosRestantes, totalAtributoFicha } from '../../engine';
 import { ATRIBUTOS, ROTULO_ATRIBUTO, editorFontes } from '../componentes';
 import type { Contexto } from '../contexto';
 import { campo, definirTexto, entradaNumero, h } from '../dom';
+import { controleSubirNivel } from './subir-nivel';
 
 export function abaAtributos(ctx: Contexto): HTMLElement {
   const f = ctx.ficha;
@@ -20,19 +19,7 @@ export function abaAtributos(ctx: Contexto): HTMLElement {
     diferenca.classList.toggle('alerta', d.excedeu);
   });
 
-  const subir = (): void => {
-    const bonus = f().regras.bonusPorNivel;
-    const resposta = window.prompt(`Quantos níveis subir? Cada nível soma ${bonus} ao bônus de nível de todos os atributos.`, '1');
-    if (resposta === null) return;
-    const quantos = Number(resposta.trim().replace(',', '.'));
-    if (!Number.isInteger(quantos) || quantos < 1) {
-      ctx.avisar('Quantidade de níveis inválida: informe um número inteiro maior que zero.');
-      return;
-    }
-    const nova = subirNivel(f(), quantos);
-    ctx.trocarFicha(nova);
-    ctx.avisar(`Subiu ${quantos} nível(is): agora nível ${nova.identidade.nivel}, bônus de nível ${nova.atributos.forca.bonusNivel}.`);
-  };
+  const subir = controleSubirNivel(ctx);
 
   const linhas = ATRIBUTOS.map((id) => {
     const total = h('strong', { class: 'valor-tabela' });
@@ -58,7 +45,8 @@ export function abaAtributos(ctx: Contexto): HTMLElement {
   return h('div', {},
     h('div', { class: 'barra-acoes' },
       h('div', {}, restantes, diferenca),
-      h('button', { type: 'button', class: 'destaque', onclick: subir }, 'Subir de nível')),
+      subir.botao),
+    subir.painel,
     h('div', { class: 'tabela-rolavel' },
       h('table', { class: 'tabela' },
         h('caption', { class: 'oculto' }, 'Atributos'),

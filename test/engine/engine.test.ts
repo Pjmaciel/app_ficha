@@ -15,6 +15,8 @@ import {
   mostraNaBatalha,
   novaSessao,
   pontosRestantes,
+  previaSubirNivel,
+  progressoXp,
   pvBase,
   poderUsavel,
   pvTotal,
@@ -82,13 +84,19 @@ describe('pontosRestantes', () => {
   });
 });
 
+/** Cópia da ficha na regra da planilha (+bonusPorNivel em todos os atributos). */
+function naPlanilha(f: Ficha = clonar()): Ficha {
+  f.regras.regraNivel = 'planilha';
+  return f;
+}
+
 describe('bonusNivelEsperado e alertaBonusNivel', () => {
   it('é 47 no nível 41 (referência das regras)', () => {
     expect(bonusNivelEsperado(ficha)).toBe(47);
   });
 
   it('cresce bonusPorNivel a cada nível acima ou abaixo da referência', () => {
-    const f = clonar();
+    const f = naPlanilha();
     f.identidade.nivel = 42;
     expect(bonusNivelEsperado(f)).toBe(51);
     f.identidade.nivel = 40;
@@ -97,10 +105,18 @@ describe('bonusNivelEsperado e alertaBonusNivel', () => {
 
   it('não há alerta na ficha atual', () => {
     expect(alertaBonusNivel(ficha)).toBeNull();
+    expect(alertaBonusNivel(naPlanilha())).toBeNull();
   });
 
-  it('há alerta quando algum bônus de nível diverge, citando o esperado', () => {
+  it('na regra do livro não há alerta, mesmo com bônus de nível desiguais (os atributos deixam de subir por igual)', () => {
     const f = clonar();
+    f.atributos.mental.bonusNivel = 57;
+    expect(f.regras.regraNivel).toBe('livro');
+    expect(alertaBonusNivel(f)).toBeNull();
+  });
+
+  it('há alerta na regra da planilha quando algum bônus de nível diverge, citando o esperado', () => {
+    const f = naPlanilha();
     f.atributos.mental.bonusNivel = 23;
     const alerta = alertaBonusNivel(f);
     expect(alerta).not.toBeNull();
@@ -369,25 +385,34 @@ describe('golpe', () => {
   });
 });
 
-describe('subirNivel', () => {
+describe('subirNivel na regra da planilha', () => {
   it('sobe um nível e soma bonusPorNivel a todos os atributos', () => {
-    const f = subirNivel(ficha, 1);
+    const f = subirNivel(naPlanilha(), { quantos: 1 });
     expect(f.identidade.nivel).toBe(42);
     for (const a of Object.values(f.atributos)) expect(a.bonusNivel).toBe(51);
     expect(alertaBonusNivel(f)).toBeNull();
   });
 
+  it('sem quantos sobe um nível; não mexe em XP, perícias nem pontos de poder', () => {
+    const f = subirNivel(naPlanilha(), {});
+    expect(f.identidade.nivel).toBe(42);
+    expect(f.xp).toEqual(ficha.xp);
+    expect(f.regras.xpProximoNivel).toBe(50);
+    expect(f.pericias).toEqual(ficha.pericias);
+    expect(f.pontosDePoderDisponiveis).toBe(0);
+  });
+
   it('sobe vários níveis de uma vez', () => {
-    const f = subirNivel(ficha, 3);
+    const f = subirNivel(naPlanilha(), { quantos: 3 });
     expect(f.identidade.nivel).toBe(44);
     expect(f.atributos.mental.bonusNivel).toBe(47 + 12);
     expect(dadosPorNivel(f.identidade.nivel)).toBe(2);
   });
 
   it('é pura: não altera a ficha original e devolve outra instância', () => {
-    const f = clonar();
+    const f = naPlanilha();
     const antes = JSON.stringify(f);
-    const nova = subirNivel(f, 1);
+    const nova = subirNivel(f, { quantos: 1 });
     expect(JSON.stringify(f)).toBe(antes);
     expect(nova).not.toBe(f);
     nova.atributos.forca.extras.push({ nome: 'X', valor: 1 });
@@ -395,9 +420,9 @@ describe('subirNivel', () => {
   });
 
   it('rejeita quantidade que não seja inteiro positivo', () => {
-    expect(() => subirNivel(ficha, 0)).toThrow();
-    expect(() => subirNivel(ficha, -1)).toThrow();
-    expect(() => subirNivel(ficha, 1.5)).toThrow();
+    expect(() => subirNivel(naPlanilha(), { quantos: 0 })).toThrow();
+    expect(() => subirNivel(naPlanilha(), { quantos: -1 })).toThrow();
+    expect(() => subirNivel(naPlanilha(), { quantos: 1.5 })).toThrow();
   });
 });
 
@@ -474,7 +499,11 @@ describe('migrarFicha', () => {
       nivelReferencia: 41,
       bonusReferencia: 47,
       diferencaMaximaAtributos: 120,
+      regraNivel: 'livro',
+      xpProximoNivel: 50,
+      incrementoXpPorNivel: 0,
     });
+    expect(f.pontosDePoderDisponiveis).toBe(0);
     expect(f.fieis).toBe(0);
     expect(f.pvExtras).toEqual([]);
     expect(f.golpes).toEqual([]);
@@ -512,8 +541,9 @@ describe('migrarFicha', () => {
     expect(f.tsu).toEqual([{ elemento: 'terra', nivel: 6, real: true }]);
   });
 
-  it('a ficha migrada dispara o alerta de bônus de nível (23 em vez de 47)', () => {
-    expect(alertaBonusNivel(migrarFicha(v1()))).not.toBeNull();
+  it('a ficha migrada dispara o alerta de bônus de nível (23 em vez de 47) na regra da planilha', () => {
+    expect(alertaBonusNivel(migrarFicha(v1()))).toBeNull();
+    expect(alertaBonusNivel(naPlanilha(migrarFicha(v1())))).not.toBeNull();
   });
 
   it('não altera a entrada', () => {
@@ -744,7 +774,10 @@ describe('pureza', () => {
     for (const c of Object.keys(f.combate)) combate(f, c as ChaveCombate);
     dano(f, f.golpes[0]);
     golpe(f, f.golpes[0]);
-    subirNivel(f, 2);
+    subirNivel(f, { atributos: ['forca', 'agilidade', 'reflexos', 'fortitude'] });
+    subirNivel(naPlanilha(clonar()), { quantos: 2 });
+    previaSubirNivel(f, ['forca']);
+    progressoXp(f);
     novaSessao(f);
     resumoBatalha(f, novaSessao(f));
     migrarFicha(f);

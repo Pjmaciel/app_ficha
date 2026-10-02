@@ -231,6 +231,18 @@ function linhaPilar(ctx: Contexto, p: Poder): HTMLElement {
   return linha;
 }
 
+/** Pontos de poder ganhos nos níveis ímpares (regra do livro) e ainda não gastos; editáveis, para o jogador ajustar. */
+function cartaoPontosDePoder(ctx: Contexto): HTMLElement {
+  const entrada = entradaNumero(ctx.ficha().pontosDePoderDisponiveis, (v) => { ctx.ficha().pontosDePoderDisponiveis = v ?? 0; ctx.mudou(); }, { min: 0 });
+  ctx.ligar(() => definirValor(entrada, String(ctx.ficha().pontosDePoderDisponiveis)));
+  return h('section', { class: 'cartao pontos-de-poder', 'aria-label': 'Pontos de poder disponíveis' },
+    h('h3', {}, 'Pontos de poder disponíveis'),
+    h('div', { class: 'campos' }, campo('Pontos de poder disponíveis', entrada)),
+    h('p', { class: 'detalhe' },
+      'Cada nível ímpar ganho pela regra do livro dá +1 ponto de poder. Ao aumentar o nível de um poder livre, o app oferece descontar os pontos disponíveis; '
+      + 'você pode recusar e ajustar o número aqui.'));
+}
+
 export function abaPoderes(ctx: Contexto): HTMLElement {
   const f = ctx.ficha;
   const lista = h('div', { class: 'lista-poderes' });
@@ -274,10 +286,25 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
         ctx.mudou();
       }, { min: 0, aceitaVazio: true });
     const usos = entradaOpcional('usosPorDia');
+    const entradaNivel = entradaNumero(p.nivel, (v) => { p.nivel = v; ctx.mudou(); }, { min: 0, aceitaVazio: true });
+    // Ao confirmar um nível maior em poder livre, oferece descontar os pontos de poder disponíveis (nunca bloqueia a edição).
+    let nivelConfirmado = p.nivel ?? 0;
+    entradaNivel.addEventListener('change', () => {
+      const aumento = (p.nivel ?? 0) - nivelConfirmado;
+      nivelConfirmado = p.nivel ?? 0;
+      const livre = (p.origem ?? (p.tipo === 'item' ? 'item' : 'livre')) === 'livre' && p.tipo !== 'removido';
+      const disponiveis = f().pontosDePoderDisponiveis;
+      if (aumento <= 0 || !livre || disponiveis <= 0) return;
+      const gastar = Math.min(aumento, disponiveis);
+      if (!window.confirm(`Descontar ${gastar} ponto(s) de poder dos ${disponiveis} disponíveis?`)) return;
+      f().pontosDePoderDisponiveis = disponiveis - gastar;
+      ctx.mudou();
+      ctx.avisar(`${gastar} ponto(s) de poder descontado(s): restam ${f().pontosDePoderDisponiveis}.`);
+    });
     raiz.append(
       h('div', { class: 'campos' },
         campo('Nome', nome),
-        campo('Nível (vazio = sem nível)', entradaNumero(p.nivel, (v) => { p.nivel = v; ctx.mudou(); }, { min: 0, aceitaVazio: true })),
+        campo('Nível (vazio = sem nível)', entradaNivel),
         campo('Origem', selecao<OrigemPoder>(ORIGENS.map((o) => [o, ROTULO_ORIGEM[o]]), p.origem ?? 'livre', (v) => { p.origem = v; ctx.mudou(); })),
         campo('Tipo', tipo),
         campo('Custo de fadiga', entradaOpcional('custoFadiga')),
@@ -318,6 +345,7 @@ export function abaPoderes(ctx: Contexto): HTMLElement {
   desenhar();
 
   return h('div', {},
+    cartaoPontosDePoder(ctx),
     h('p', { class: 'detalhe' },
       'Só entram no painel de sessão os poderes com custo de fadiga ou usos por dia e tipo diferente de Removido. Poderes de defesa e itens aparecem por padrão na aba Batalha; os demais, se marcados.'),
     lista,

@@ -183,7 +183,9 @@ describe('importarJson com versão 1', () => {
   });
 
   it('a ficha migrada aponta o bônus de nível antigo', () => {
-    expect(alertaBonusNivel(importarJson(JSON.stringify(v1())))).toContain('47');
+    const f = importarJson(JSON.stringify(v1()));
+    expect(alertaBonusNivel(f)).toBeNull();
+    expect(alertaBonusNivel({ ...f, regras: { ...f.regras, regraNivel: 'planilha' } })).toContain('47');
   });
 
   it('rejeita versão 1 com estrutura inválida', () => {

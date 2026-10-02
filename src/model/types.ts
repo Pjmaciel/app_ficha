@@ -138,12 +138,22 @@ export interface AcaoBatalha { id: string; nome: string; rolagem: string; notas:
 /** Guia "Quando for atacado": situação e a resposta recomendada (aceita marcadores vivos, como `{poder.<id>.<efeito>}`). */
 export interface Reacao { situacao: string; resposta: string }
 
+/** Como a ficha sobe de nível: `livro` (+10 em 4 atributos à escolha, perícias nos níveis pares, ponto de poder nos ímpares) ou `planilha` (+bonusPorNivel em todos os atributos). */
+export type RegraNivel = 'livro' | 'planilha';
+
 export interface Regras {
   pontosIniciais: number;
+  /** Regra da planilha: bônus de nível somado a todos os atributos a cada nível. */
   bonusPorNivel: number;
   nivelReferencia: number;
   bonusReferencia: number;
   diferencaMaximaAtributos: number;
+  /** Regra de evolução em uso ao subir de nível; o padrão é a do livro. */
+  regraNivel: RegraNivel;
+  /** Custo em XP do próximo nível (a tabela do livro é acumulada; o custo é a diferença entre linhas). Acima do 40 é extrapolação (50): confirme com o mestre. */
+  xpProximoNivel: number;
+  /** Quanto `xpProximoNivel` aumenta a cada nível subido (0 por padrão). */
+  incrementoXpPorNivel: number;
 }
 
 /**
@@ -194,7 +204,10 @@ export interface Ficha {
   reacoes: Reacao[];
   /** Fiéis vinculados; começa em 0 porque os bônus passivos da planilha já os incluem. */
   fieis: number;
+  /** `atual` é o XP acumulado rumo ao próximo nível; `total` é o histórico. */
   xp: { total: number; atual: number };
+  /** Pontos de poder ganhos nos níveis ímpares e ainda não gastos na aba Poderes. */
+  pontosDePoderDisponiveis: number;
 }
 
 export interface Sessao { pvAtual: number; fadiga: number; usosPoder: Record<string, number>; anotacoes: string }
