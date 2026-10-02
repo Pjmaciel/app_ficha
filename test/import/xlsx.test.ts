@@ -17,7 +17,8 @@ describe('importarXlsx', () => {
   it('reproduz exatamente o JSON de referência do Alexsander, depois da migração que semeia as escalas dos poderes', () => {
     // Os níveis da planilha (antigos) dão lugar à semente do pilar da Justiça 3: valor base × pilar + pontos livres.
     const esperado = structuredClone(alexsander) as unknown as Ficha;
-    expect(migrarFicha(ficha)).toStrictEqual({ ...esperado, revisaoDados: 0 });
+    // O XP é progresso do jogador: a planilha e a ficha antiga trazem 12, a embutida tem mais; é a única diferença esperada.
+    expect(migrarFicha(ficha)).toStrictEqual({ ...esperado, revisaoDados: 0, xp: { total: 12, atual: 12 } });
   });
 
   it('o importador não semeia escalas: os poderes saem sem escala e as fontes continuam nomeadas', () => {

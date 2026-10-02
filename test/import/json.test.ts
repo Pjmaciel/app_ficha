@@ -137,7 +137,8 @@ describe('importarJson e a escala por nível dos poderes', () => {
   it('a ficha salva antes da escala é migrada: as fontes viram parcelas derivadas dos poderes, sem ajuste do mestre', () => {
     const f = importarJson(JSON.stringify(antiga));
     // Os níveis vêm da semente do pilar (valor base × pilar + livres), não dos níveis antigos da planilha.
-    expect(f).toStrictEqual({ ...structuredClone(ficha), revisaoDados: 0 });
+    // O XP é progresso do jogador: a planilha e a ficha antiga trazem 12, a embutida tem mais; é a única diferença esperada.
+    expect(f).toStrictEqual({ ...structuredClone(ficha), revisaoDados: 0, xp: { total: 12, atual: 12 } });
   });
 
   it('aceita escala completa e a preserva na ida e volta', () => {

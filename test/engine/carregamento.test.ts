@@ -35,8 +35,11 @@ describe('decidirCarregamento', () => {
   });
 
   it('versão 2 com a mesma revisão (ou maior) é mantida sem aviso', () => {
-    expect(decidirCarregamento({ versao: 2, revisaoDados: 8 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
-    expect(decidirCarregamento({ versao: 2, revisaoDados: 9 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
+    // A revisão vem da embutida, para o teste não depender de um número fixo.
+    const revisao = embutida.revisaoDados;
+    expect(decidirCarregamento({ versao: 2, revisaoDados: revisao }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: revisao + 1 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: false });
+    expect(decidirCarregamento({ versao: 2, revisaoDados: revisao - 1 }, embutida)).toEqual({ acao: 'salva', avisarNovaRevisao: true });
   });
 });
 

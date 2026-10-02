@@ -360,7 +360,8 @@ describe('migração dos efeitos e dos textos vivos', () => {
   });
 
   it('a ficha salva antes da escala termina igual à embutida (níveis da semente do pilar)', () => {
-    expect(migrarFicha(structuredClone(antiga))).toStrictEqual({ ...clonarBuild(), revisaoDados: 0 });
+    // O XP é progresso do jogador: a planilha e a ficha antiga trazem 12, a embutida tem mais; é a única diferença esperada.
+    expect(migrarFicha(structuredClone(antiga))).toStrictEqual({ ...clonarBuild(), revisaoDados: 0, xp: { total: 12, atual: 12 } });
   });
 });
 

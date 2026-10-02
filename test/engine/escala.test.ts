@@ -258,7 +258,8 @@ describe('migração para a escala por nível', () => {
 
   it('a ficha salva antes da escala vira a build da mesa (Campeão 3, Lugan da Batalha 1, Proteção Divina 2, Jikar), sem "Outros"', () => {
     const f = migrada();
-    expect(f).toStrictEqual({ ...structuredClone(fichaBuild), revisaoDados: 0 });
+    // O XP é progresso do jogador: a planilha e a ficha antiga trazem 12, a embutida tem mais; é a única diferença esperada.
+    expect(f).toStrictEqual({ ...structuredClone(fichaBuild), revisaoDados: 0, xp: { total: 12, atual: 12 } });
     const totais = CHAVES.map((c) => combate(f, c).total);
     expect(totais).toEqual([868, 551, 458, 458, 260, 661, 884]);
     expect(totalAtributoFicha(f, 'forca')).toBe(262);
