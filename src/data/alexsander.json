@@ -1,6 +1,6 @@
 {
   "versao": 2,
-  "revisaoDados": 8,
+  "revisaoDados": 9,
   "identidade": {
     "nome": "Alexsander Somar III",
     "jogador": "Pablo Maciel",
@@ -1139,7 +1139,7 @@
   ],
   "fieis": 0,
   "xp": {
-    "total": 12,
-    "atual": 12
+    "total": 62,
+    "atual": 62
   }
 }
